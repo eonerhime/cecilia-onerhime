@@ -49,9 +49,6 @@ export default async function Home() {
           <a href="/tributes" className="hover:text-[#c48a3a]">
             Tributes
           </a>
-          <a href="/contact" className="hover:text-[#c48a3a]">
-            Build a website
-          </a>
           <a
             href="/programme"
             className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] hover:bg-[#536b60]"
