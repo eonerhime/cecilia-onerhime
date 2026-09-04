@@ -49,6 +49,9 @@ export default async function Home() {
           <a href="/tributes" className="hover:text-[#c48a3a]">
             Tributes
           </a>
+          <a href="/contact" className="hover:text-[#c48a3a]">
+            Build a website
+          </a>
           <a
             href="/programme"
             className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] hover:bg-[#536b60]"
@@ -87,9 +90,17 @@ export default async function Home() {
         </div>
         <div className="relative mx-auto w-full max-w-md lg:justify-self-end">
           <div
-            className="photo-placeholder aspect-[4/5] rounded-[48%_48%_4%_4%] shadow-[18px_20px_0_#d8cec0]"
+            className={`${settings.heroImageUrl ? "overflow-hidden bg-[#536b60]" : "photo-placeholder"} aspect-[4/5] rounded-[48%_48%_4%_4%] shadow-[18px_20px_0_#d8cec0]`}
             aria-label="Portrait of Cecilia to be added in public/images"
-          ></div>
+          >
+            {settings.heroImageUrl && (
+              <img
+                src={settings.heroImageUrl}
+                alt={settings.displayName}
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
           <div className="absolute -bottom-8 -left-5 max-w-[210px] border-l-2 border-[#c48a3a] bg-[#fbf8f2]/90 px-5 py-3 backdrop-blur-sm">
             <p className="display-font text-2xl leading-none">
               Forever held

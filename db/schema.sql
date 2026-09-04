@@ -19,6 +19,17 @@ create table if not exists media_submissions (
 create index if not exists tributes_approved_created_idx on tributes (status, created_at desc);
 create index if not exists media_approved_created_idx on media_submissions (status, created_at desc);
 
+create table if not exists contact_inquiries (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  project_type text not null check (project_type in ('memorial', 'birthday', 'celebration', 'other')),
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists contact_inquiries_created_idx on contact_inquiries (created_at desc);
+
 create table if not exists admin_rate_limits (
   client_key text primary key,
   failed_attempts integer not null default 0,
@@ -30,6 +41,7 @@ create table if not exists memorial_settings (
   id text primary key default 'default',
   display_name text not null default 'Cecilia Onerhime',
   footer_text text not null default 'Copyright © is the Moses Onerhime Family 2026 All rights reserved',
+  hero_image_url text not null default '',
   background_color text not null default '#f5f0e8',
   foreground_color text not null default '#1f2d2b',
   paper_color text not null default '#fbf8f2',
@@ -42,6 +54,7 @@ create table if not exists memorial_settings (
 );
 
 alter table memorial_settings add column if not exists background_color text not null default '#f5f0e8';
+alter table memorial_settings add column if not exists hero_image_url text not null default '';
 alter table memorial_settings add column if not exists foreground_color text not null default '#1f2d2b';
 alter table memorial_settings add column if not exists paper_color text not null default '#fbf8f2';
 alter table memorial_settings add column if not exists sage_color text not null default '#536b60';
