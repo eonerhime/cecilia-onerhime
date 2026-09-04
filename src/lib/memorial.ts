@@ -16,6 +16,19 @@ export const defaultMemorialSettings = {
   },
 };
 
+export type ApprovedTribute = {
+  id: string;
+  name: string;
+  message: string;
+};
+
+export type ApprovedMedia = {
+  id: string;
+  mediaUrl: string;
+  mediaType: "image" | "video";
+  caption: string | null;
+};
+
 export async function getMemorialSettings() {
   try {
     const sql = getDatabase();
@@ -43,5 +56,38 @@ export async function getMemorialSettings() {
   } catch (error) {
     console.error("Memorial settings lookup failed", error);
     return defaultMemorialSettings;
+  }
+}
+
+export async function getApprovedMemories() {
+  try {
+    const sql = getDatabase();
+    const [tributes, media] = await Promise.all([
+      sql`
+        select id, name, message
+        from tributes
+        where status = 'approved'
+        order by created_at desc
+        limit 3
+      `,
+      sql`
+        select id, media_url, media_type, caption
+        from media_submissions
+        where status = 'approved'
+        order by created_at desc
+        limit 6
+      `,
+    ]);
+    return {
+      tributes: tributes as ApprovedTribute[],
+      media: media.map(({ media_url, media_type, ...item }) => ({
+        ...item,
+        mediaUrl: media_url,
+        mediaType: media_type,
+      })) as ApprovedMedia[],
+    };
+  } catch (error) {
+    console.error("Approved memories lookup failed", error);
+    return { tributes: [], media: [] };
   }
 }

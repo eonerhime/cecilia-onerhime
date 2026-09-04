@@ -1,8 +1,21 @@
 import Link from "next/link";
-import { getMemorialSettings } from "@/lib/memorial";
+import {
+  getApprovedMemories,
+  getMemorialSettings,
+  type ApprovedMedia,
+} from "@/lib/memorial";
+
+const localImages = [
+  "/images/WhatsApp Image 2026-09-02 at 19.09.54 (1).jpeg",
+  "/images/WhatsApp Image 2026-09-02 at 19.09.53.jpeg",
+  "/images/WhatsApp Image 2026-09-02 at 19.09.52.jpeg",
+];
 
 export default async function Home() {
-  const settings = await getMemorialSettings();
+  const [settings, memories] = await Promise.all([
+    getMemorialSettings(),
+    getApprovedMemories(),
+  ]);
   const events = [
     [
       "01",
@@ -156,6 +169,94 @@ export default async function Home() {
               Tributes <span>↗</span>
             </h3>
           </a>
+        </div>
+      </section>
+      <section className="border-y border-[#d8cec0] bg-[#fbf8f2]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-10">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+            <div>
+              <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
+                Shared memories
+              </p>
+              <h2 className="display-font mt-5 text-5xl leading-[.95]">
+                The love
+                <br />
+                <span className="text-[#536b60]">we carry.</span>
+              </h2>
+            </div>
+            <Link
+              href="/gallery"
+              className="text-sm font-semibold text-[#536b60] hover:text-[#c48a3a]"
+            >
+              Visit the gallery <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(memories.media.length
+              ? memories.media
+              : localImages.map((mediaUrl, index) => ({
+                  id: `local-${index}`,
+                  mediaUrl,
+                  mediaType: "image" as const,
+                  caption: null,
+                }))
+            ).map((item: ApprovedMedia) => (
+              <div
+                key={item.id}
+                className="group relative aspect-[4/3] overflow-hidden bg-[#536b60]"
+              >
+                {item.mediaType === "image" ? (
+                  <img
+                    src={item.mediaUrl}
+                    alt={item.caption || "A memory of Cecilia"}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center p-6 text-center text-[#fbf8f2]">
+                    <span className="display-font text-3xl">
+                      Video memory ↗
+                    </span>
+                  </div>
+                )}
+                {item.caption && (
+                  <p className="absolute inset-x-0 bottom-0 bg-[#1f2d2b]/80 px-4 py-3 text-xs text-[#fbf8f2]">
+                    {item.caption}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {(memories.tributes.length
+              ? memories.tributes
+              : [
+                  {
+                    id: "sample-1",
+                    name: "A family memory",
+                    message:
+                      "Her kindness had a way of making everyone feel at home.",
+                  },
+                  {
+                    id: "sample-2",
+                    name: "With love",
+                    message:
+                      "We will keep her laughter close, in all the ordinary days ahead.",
+                  },
+                ]
+            ).map((tribute) => (
+              <blockquote
+                key={tribute.id}
+                className="border-t-2 border-[#c48a3a] pt-4"
+              >
+                <p className="display-font text-2xl leading-tight text-[#1f2d2b]">
+                  “{tribute.message}”
+                </p>
+                <cite className="mt-4 block text-xs not-italic uppercase tracking-[.18em] text-[#536b60]">
+                  {tribute.name}
+                </cite>
+              </blockquote>
+            ))}
+          </div>
         </div>
       </section>
       <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[#d8cec0] px-6 py-8 text-xs text-[#536b60] sm:flex-row sm:items-center sm:justify-between lg:px-10">
