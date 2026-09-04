@@ -2,7 +2,11 @@
 
 Add approved photographs to `public/images/` and the burial programme PDF to `public/programme/`.
 
-Before launch, connect Vercel Blob for visitor uploads and Neon Postgres for tribute/media moderation. Protect an admin route and notify the family when new submissions arrive.
+## Database setup
+
+Run `db/schema.sql` once in the Neon SQL Editor. Keep `DATABASE_URL` and `DIRECT_URL` in `.env` locally and add both to the Vercel project environment variables. The tribute form stores submissions as `pending`; an admin approval screen still needs to be added before public moderation is complete.
+
+Visitor image uploads additionally need a Vercel Blob store and `BLOB_READ_WRITE_TOKEN`. The media table is ready for approved image and YouTube/Vimeo URL records.
 
 ## Getting Started
 

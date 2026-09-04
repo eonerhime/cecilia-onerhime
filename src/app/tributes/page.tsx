@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TributeForm from "./tribute-form";
 
 export default function Tributes() {
   return (
@@ -26,19 +27,7 @@ export default function Tributes() {
               Your words will be sent to the family for review before they are
               shared here.
             </p>
-            <div className="mt-7 space-y-3">
-              <input
-                className="w-full border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
-                placeholder="Your name"
-              />
-              <textarea
-                className="h-28 w-full resize-none border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
-                placeholder="Your memory or message"
-              />
-              <button className="rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold">
-                Send tribute
-              </button>
-            </div>
+            <TributeForm />
           </div>
         </div>
       </section>
