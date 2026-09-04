@@ -1,92 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { requireAdmin } from "@/lib/admin-auth";
 
 type SubmissionType = "tribute" | "media";
 type SubmissionStatus = "approved" | "rejected";
-
-const LOCKOUT_SECONDS = 30 * 60;
-const MAX_ATTEMPTS = 5;
-
-function getClientKey(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const clientIp =
-    forwardedFor?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  return `admin:${clientIp}`;
-}
-
-async function authorize(request: Request) {
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) return { authorized: false, retryAfter: 0 };
-
-  const sql = getDatabase();
-  const clientKey = getClientKey(request);
-  const [rateLimit] = await sql`
-    select locked_until
-    from admin_rate_limits
-    where client_key = ${clientKey}
-  `;
-  const lockedUntil = rateLimit?.locked_until
-    ? new Date(rateLimit.locked_until).getTime()
-    : 0;
-  if (lockedUntil > Date.now()) {
-    return {
-      authorized: false,
-      retryAfter: Math.ceil((lockedUntil - Date.now()) / 1000),
-    };
-  }
-
-  if (request.headers.get("x-admin-password") === password) {
-    await sql`delete from admin_rate_limits where client_key = ${clientKey}`;
-    return { authorized: true, retryAfter: 0 };
-  }
-
-  const [attempt] = await sql`
-    insert into admin_rate_limits (client_key, failed_attempts)
-    values (${clientKey}, 1)
-    on conflict (client_key) do update set
-      failed_attempts = case
-        when admin_rate_limits.window_started < now() - interval '15 minutes' then 1
-        else admin_rate_limits.failed_attempts + 1
-      end,
-      window_started = case
-        when admin_rate_limits.window_started < now() - interval '15 minutes' then now()
-        else admin_rate_limits.window_started
-      end,
-      locked_until = case
-        when (
-          case
-            when admin_rate_limits.window_started < now() - interval '15 minutes' then 1
-            else admin_rate_limits.failed_attempts + 1
-          end
-        ) >= 5 then now() + interval '30 minutes'
-        else null
-      end
-    returning failed_attempts, locked_until
-  `;
-  const retryAfter =
-    attempt?.failed_attempts >= MAX_ATTEMPTS ? LOCKOUT_SECONDS : 0;
-  return { authorized: false, retryAfter };
-}
-
-async function requireAdmin(request: Request) {
-  const result = await authorize(request);
-  if (result.authorized) return null;
-  return NextResponse.json(
-    {
-      error: result.retryAfter
-        ? "Too many attempts. Try again later."
-        : "Unauthorized",
-    },
-    {
-      status: result.retryAfter ? 429 : 401,
-      headers: result.retryAfter
-        ? { "Retry-After": String(result.retryAfter) }
-        : undefined,
-    },
-  );
-}
 
 export async function GET(request: Request) {
   try {

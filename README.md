@@ -6,7 +6,7 @@ Add approved photographs to `public/images/` and the burial programme PDF to `pu
 
 Run `db/schema.sql` once in the Neon SQL Editor. Keep `DATABASE_URL`, `DIRECT_URL`, and `ADMIN_PASSWORD` in `.env` locally and add them to the Vercel project environment variables. The tribute form stores submissions as `pending`; visit `/admin` to review and approve or reject tribute and gallery submissions. Admin authentication is limited to five failed attempts per 15 minutes per IP, followed by a 30-minute lockout. Public tribute submissions are limited to four accepted submissions per hour per IP.
 
-Visitor image uploads additionally need a Vercel Blob store and `BLOB_READ_WRITE_TOKEN`. The media table is ready for approved image and YouTube/Vimeo URL records.
+Visitor image uploads and admin bulk image imports need a Vercel Blob store and `BLOB_READ_WRITE_TOKEN`. The media table is ready for approved image and YouTube/Vimeo URL records. In `/admin`, use the CSV template with `name,tribute` columns for bulk tribute imports; imports are created as pending and must be approved.
 
 ## Getting Started
 

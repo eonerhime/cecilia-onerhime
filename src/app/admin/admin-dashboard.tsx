@@ -50,12 +50,17 @@ export default function AdminDashboard() {
   const [settings, setSettings] = useState<MemorialSettings | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState<"tributes" | "images" | null>(
+    null,
+  );
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function loadSubmissions(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     const response = await fetch("/api/admin", {
       headers: { "x-admin-password": password },
     });
@@ -121,6 +126,55 @@ export default function AdminDashboard() {
     else setMedia((items) => items.filter((item) => item.id !== id));
   }
 
+  async function importFile(type: "tributes" | "images", file: File | null) {
+    if (!file) return;
+    setImporting(type);
+    setError("");
+    setNotice("");
+    const form = new FormData();
+    form.set("type", type);
+    if (type === "tributes") form.set("file", file);
+    else form.append("files", file);
+    const response = await fetch("/api/admin/import", {
+      method: "POST",
+      headers: { "x-admin-password": password },
+      body: form,
+    });
+    const result = await response.json();
+    setImporting(null);
+    if (!response.ok) {
+      setError(result.error || "Bulk import failed.");
+      return;
+    }
+    setNotice(
+      `${result.data.imported} ${type === "tributes" ? "tributes" : "images"} imported and waiting for review.`,
+    );
+  }
+
+  async function importImages(files: FileList | null) {
+    if (!files?.length) return;
+    setImporting("images");
+    setError("");
+    setNotice("");
+    const form = new FormData();
+    form.set("type", "images");
+    Array.from(files).forEach((file) => form.append("files", file));
+    const response = await fetch("/api/admin/import", {
+      method: "POST",
+      headers: { "x-admin-password": password },
+      body: form,
+    });
+    const result = await response.json();
+    setImporting(null);
+    if (!response.ok) {
+      setError(result.error || "Bulk image upload failed.");
+      return;
+    }
+    setNotice(
+      `${result.data.imported} images imported and waiting for review.`,
+    );
+  }
+
   if (!authenticated)
     return (
       <form
@@ -157,6 +211,11 @@ export default function AdminDashboard() {
       {error && (
         <p className="border-l-2 border-[#b8786f] px-4 py-3 text-sm text-[#b8786f]">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p className="border-l-2 border-[#c48a3a] px-4 py-3 text-sm text-[#536b60]">
+          {notice}
         </p>
       )}
       {total === 0 && (
@@ -222,6 +281,65 @@ export default function AdminDashboard() {
           </div>
         </form>
       )}
+      <section className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6">
+        <div className="border-b border-[#d8cec0] pb-4">
+          <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
+            Content import
+          </p>
+          <h2 className="display-font mt-2 text-4xl">Bring memories in bulk</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#536b60]">
+            Imports stay pending until you approve them. Tribute CSVs need two
+            columns: <strong>name</strong> and <strong>tribute</strong>. Keep
+            one person and one message per row.
+          </p>
+        </div>
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <div className="border-t-2 border-[#c48a3a] pt-4">
+            <h3 className="display-font text-3xl">Tributes CSV</h3>
+            <p className="mt-2 text-sm leading-6 text-[#536b60]">
+              UTF-8 CSV, up to 100 rows. Quoted commas and line breaks are
+              supported.
+            </p>
+            <a
+              download="tributes-template.csv"
+              href={
+                "data:text/csv;charset=utf-8,name,tribute%0A%22Auntie%20May%22,%22Her%20kindness%20made%20everyone%20feel%20at%20home.%22%0A"
+              }
+              className="mt-4 inline-block text-sm font-semibold text-[#536b60] underline underline-offset-4"
+            >
+              Download template
+            </a>
+            <label className="mt-5 flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
+              {importing === "tributes" ? "Importing..." : "Choose CSV"}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={(event) =>
+                  importFile("tributes", event.target.files?.[0] || null)
+                }
+              />
+            </label>
+          </div>
+          <div className="border-t-2 border-[#c48a3a] pt-4">
+            <h3 className="display-font text-3xl">Gallery images</h3>
+            <p className="mt-2 text-sm leading-6 text-[#536b60]">
+              Select up to 30 images, 10 MB each. They are stored in Vercel Blob
+              and enter moderation as pending.
+            </p>
+            <label className="mt-5 flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
+              {importing === "images" ? "Uploading..." : "Choose images"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={(event) => importImages(event.target.files)}
+              />
+            </label>
+          </div>
+        </div>
+      </section>
       <ReviewSection title="Tributes" count={tributes.length}>
         {tributes.map((item) => (
           <ReviewCard
