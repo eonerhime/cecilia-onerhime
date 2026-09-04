@@ -41,6 +41,15 @@ create table if not exists memorial_settings (
   updated_at timestamptz not null default now()
 );
 
+alter table memorial_settings add column if not exists background_color text not null default '#f5f0e8';
+alter table memorial_settings add column if not exists foreground_color text not null default '#1f2d2b';
+alter table memorial_settings add column if not exists paper_color text not null default '#fbf8f2';
+alter table memorial_settings add column if not exists sage_color text not null default '#536b60';
+alter table memorial_settings add column if not exists accent_color text not null default '#c48a3a';
+alter table memorial_settings add column if not exists line_color text not null default '#d8cec0';
+alter table memorial_settings add column if not exists rose_color text not null default '#b8786f';
+alter table memorial_settings add column if not exists peach_color text not null default '#d9b5a8';
+
 insert into memorial_settings (id, display_name, footer_text)
 values ('default', 'Cecilia Onerhime', 'Copyright © is the Moses Onerhime Family 2026 All rights reserved')
 on conflict (id) do nothing;

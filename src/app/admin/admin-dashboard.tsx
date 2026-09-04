@@ -16,12 +16,39 @@ type Media = {
   caption: string | null;
   createdAt: string;
 };
+type MemorialSettings = {
+  footerText: string;
+  colors: Record<
+    | "background"
+    | "foreground"
+    | "paper"
+    | "sage"
+    | "accent"
+    | "line"
+    | "rose"
+    | "peach",
+    string
+  >;
+};
+
+const colorLabels: Array<[keyof MemorialSettings["colors"], string]> = [
+  ["background", "Background"],
+  ["foreground", "Text"],
+  ["paper", "Paper"],
+  ["sage", "Sage"],
+  ["accent", "Accent"],
+  ["line", "Lines"],
+  ["rose", "Rose"],
+  ["peach", "Peach"],
+];
 
 export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [tributes, setTributes] = useState<Tribute[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
+  const [settings, setSettings] = useState<MemorialSettings | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,8 +73,30 @@ export default function AdminDashboard() {
     const data = await response.json();
     setTributes(data.data.tributes);
     setMedia(data.data.media);
+    setSettings(data.data.settings);
     setAuthenticated(true);
     setLoading(false);
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settings) return;
+    setSavingSettings(true);
+    setError("");
+    const response = await fetch("/api/admin", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-password": password,
+      },
+      body: JSON.stringify({ type: "settings", ...settings }),
+    });
+    setSavingSettings(false);
+    if (!response.ok) {
+      setError("Unable to save site settings.");
+      return;
+    }
+    setError("");
   }
 
   async function moderate(
@@ -114,6 +163,64 @@ export default function AdminDashboard() {
         <p className="border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm text-[#536b60]">
           Nothing is waiting for review.
         </p>
+      )}
+      {settings && (
+        <form
+          onSubmit={saveSettings}
+          className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#d8cec0] pb-4">
+            <div>
+              <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
+                Site settings
+              </p>
+              <h2 className="display-font mt-2 text-4xl">Appearance</h2>
+            </div>
+            <button
+              disabled={savingSettings}
+              className="rounded-full bg-[#1f2d2b] px-5 py-3 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
+            >
+              {savingSettings ? "Saving..." : "Save appearance"}
+            </button>
+          </div>
+          <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
+            Footer copyright
+            <input
+              required
+              maxLength={200}
+              value={settings.footerText}
+              onChange={(event) =>
+                setSettings({ ...settings, footerText: event.target.value })
+              }
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
+            />
+          </label>
+          <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {colorLabels.map(([name, label]) => (
+              <label
+                key={name}
+                className="flex min-w-0 items-center gap-2 text-xs text-[#536b60]"
+              >
+                <input
+                  type="color"
+                  value={settings.colors[name]}
+                  aria-label={`${label} color`}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      colors: {
+                        ...settings.colors,
+                        [name]: event.target.value,
+                      },
+                    })
+                  }
+                  className="h-9 w-9 shrink-0 cursor-pointer border-0 bg-transparent p-0"
+                />
+                <span className="truncate">{label}</span>
+              </label>
+            ))}
+          </div>
+        </form>
       )}
       <ReviewSection title="Tributes" count={tributes.length}>
         {tributes.map((item) => (
@@ -195,7 +302,7 @@ function ReviewCard({
   return (
     <article className="min-w-0 border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 text-xs uppercase tracking-[.14em] text-[#536b60]">
-        <span className="max-w-full break-words">{name}</span>
+        <span className="max-w-full wrap-break-word">{name}</span>
         <time dateTime={date} className="shrink-0">
           {new Date(date).toLocaleDateString()}
         </time>

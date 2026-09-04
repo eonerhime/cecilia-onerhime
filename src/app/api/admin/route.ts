@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     const [tributes, media, settings] = await Promise.all([
       sql`select id, name, message, created_at from tributes where status = 'pending' order by created_at asc`,
       sql`select id, name, media_url, media_type, caption, created_at from media_submissions where status = 'pending' order by created_at asc`,
-      sql`select display_name, footer_text from memorial_settings where id = 'default'`,
+      sql`select display_name, footer_text, background_color, foreground_color, paper_color, sage_color, accent_color, line_color, rose_color, peach_color from memorial_settings where id = 'default'`,
     ]);
     const currentSettings = settings[0];
     return NextResponse.json(
@@ -119,6 +119,16 @@ export async function GET(request: Request) {
             footerText:
               currentSettings?.footer_text ||
               "Copyright © is the Moses Onerhime Family 2026 All rights reserved",
+            colors: {
+              background: currentSettings?.background_color || "#f5f0e8",
+              foreground: currentSettings?.foreground_color || "#1f2d2b",
+              paper: currentSettings?.paper_color || "#fbf8f2",
+              sage: currentSettings?.sage_color || "#536b60",
+              accent: currentSettings?.accent_color || "#c48a3a",
+              line: currentSettings?.line_color || "#d8cec0",
+              rose: currentSettings?.rose_color || "#b8786f",
+              peach: currentSettings?.peach_color || "#d9b5a8",
+            },
           },
         },
       },
@@ -141,19 +151,48 @@ export async function PATCH(request: Request) {
     if (body.type === "settings") {
       const footerText =
         typeof body.footerText === "string" ? body.footerText.trim() : "";
-      if (!footerText || footerText.length > 200) {
+      const colors = body.colors as Record<string, unknown>;
+      const colorNames = [
+        "background",
+        "foreground",
+        "paper",
+        "sage",
+        "accent",
+        "line",
+        "rose",
+        "peach",
+      ] as const;
+      const isHexColor = (value: unknown): value is string =>
+        typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+      if (
+        !footerText ||
+        footerText.length > 200 ||
+        !colors ||
+        colorNames.some((name) => !isHexColor(colors[name]))
+      ) {
         return NextResponse.json(
-          { error: "Please provide a footer line of 1 to 200 characters." },
+          { error: "Please provide valid footer text and six-digit colors." },
           { status: 400 },
         );
       }
       const sql = getDatabase();
       await sql`
-        insert into memorial_settings (id, footer_text, updated_at)
-        values ('default', ${footerText}, now())
-        on conflict (id) do update set footer_text = ${footerText}, updated_at = now()
+        insert into memorial_settings (
+          id, footer_text, background_color, foreground_color, paper_color,
+          sage_color, accent_color, line_color, rose_color, peach_color, updated_at
+        ) values (
+          'default', ${footerText}, ${colors.background}, ${colors.foreground},
+          ${colors.paper}, ${colors.sage}, ${colors.accent}, ${colors.line},
+          ${colors.rose}, ${colors.peach}, now()
+        )
+        on conflict (id) do update set
+          footer_text = ${footerText}, background_color = ${colors.background},
+          foreground_color = ${colors.foreground}, paper_color = ${colors.paper},
+          sage_color = ${colors.sage}, accent_color = ${colors.accent},
+          line_color = ${colors.line}, rose_color = ${colors.rose},
+          peach_color = ${colors.peach}, updated_at = now()
       `;
-      return NextResponse.json({ data: { footerText } });
+      return NextResponse.json({ data: { footerText, colors } });
     }
     const type = body.type as SubmissionType;
     const status = body.status as SubmissionStatus;
