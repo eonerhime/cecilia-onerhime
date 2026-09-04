@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getMemorialSettings } from "@/lib/memorial";
 
-export default function Home() {
+export default async function Home() {
+  const settings = await getMemorialSettings();
   const events = [
     [
       "01",
@@ -22,7 +24,7 @@ export default function Home() {
           href="/"
           className="display-font text-2xl font-semibold tracking-tight"
         >
-          Cecilia Onerhime
+          {settings.displayName}
         </Link>
         <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
           <a href="/profile" className="hover:text-[#c48a3a]">
@@ -158,7 +160,7 @@ export default function Home() {
       </section>
       <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[#d8cec0] px-6 py-8 text-xs text-[#536b60] sm:flex-row sm:items-center sm:justify-between lg:px-10">
         <p>In memory of Cecilia Onerhime</p>
-        <p>Made with love by her family</p>
+        <p>{settings.footerText}</p>
       </footer>
     </main>
   );

@@ -4,7 +4,7 @@ Add approved photographs to `public/images/` and the burial programme PDF to `pu
 
 ## Database setup
 
-Run `db/schema.sql` once in the Neon SQL Editor. Keep `DATABASE_URL` and `DIRECT_URL` in `.env` locally and add both to the Vercel project environment variables. The tribute form stores submissions as `pending`; an admin approval screen still needs to be added before public moderation is complete.
+Run `db/schema.sql` once in the Neon SQL Editor. Keep `DATABASE_URL`, `DIRECT_URL`, and `ADMIN_PASSWORD` in `.env` locally and add them to the Vercel project environment variables. The tribute form stores submissions as `pending`; visit `/admin` to review and approve or reject tribute and gallery submissions. Admin authentication is limited to five failed attempts per 15 minutes per IP, followed by a 30-minute lockout. Public tribute submissions are limited to four accepted submissions per hour per IP.
 
 Visitor image uploads additionally need a Vercel Blob store and `BLOB_READ_WRITE_TOKEN`. The media table is ready for approved image and YouTube/Vimeo URL records.
 
@@ -22,7 +22,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:1944](http://localhost:1944) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

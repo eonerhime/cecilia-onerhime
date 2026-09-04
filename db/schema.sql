@@ -18,3 +18,29 @@ create table if not exists media_submissions (
 
 create index if not exists tributes_approved_created_idx on tributes (status, created_at desc);
 create index if not exists media_approved_created_idx on media_submissions (status, created_at desc);
+
+create table if not exists admin_rate_limits (
+  client_key text primary key,
+  failed_attempts integer not null default 0,
+  window_started timestamptz not null default now(),
+  locked_until timestamptz
+);
+
+create table if not exists memorial_settings (
+  id text primary key default 'default',
+  display_name text not null default 'Cecilia Onerhime',
+  footer_text text not null default 'Copyright © is the Moses Onerhime Family 2026 All rights reserved',
+  background_color text not null default '#f5f0e8',
+  foreground_color text not null default '#1f2d2b',
+  paper_color text not null default '#fbf8f2',
+  sage_color text not null default '#536b60',
+  accent_color text not null default '#c48a3a',
+  line_color text not null default '#d8cec0',
+  rose_color text not null default '#b8786f',
+  peach_color text not null default '#d9b5a8',
+  updated_at timestamptz not null default now()
+);
+
+insert into memorial_settings (id, display_name, footer_text)
+values ('default', 'Cecilia Onerhime', 'Copyright © is the Moses Onerhime Family 2026 All rights reserved')
+on conflict (id) do nothing;

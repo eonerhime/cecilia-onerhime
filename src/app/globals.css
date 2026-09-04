@@ -7,6 +7,8 @@
   --sage: #536b60;
   --marigold: #c48a3a;
   --line: #d8cec0;
+  --rose: #b8786f;
+  --peach: #d9b5a8;
 }
 
 @theme inline {
@@ -30,13 +32,13 @@ body {
 }
 .paper-grain {
   background-image: radial-gradient(
-    rgba(31, 45, 43, 0.055) 0.7px,
+    color-mix(in srgb, var(--foreground) 5.5%, transparent) 0.7px,
     transparent 0.7px
   );
   background-size: 7px 7px;
 }
 .photo-placeholder {
-  background: linear-gradient(145deg, #8b9c8b 0%, #536b60 48%, #2e4642 100%);
+  background: linear-gradient(145deg, var(--sage) 0%, var(--sage) 48%, var(--foreground) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -45,7 +47,7 @@ body {
   position: absolute;
   inset: 15% 14% 0;
   border-radius: 50% 50% 0 0;
-  background: rgba(245, 240, 232, 0.18);
+  background: color-mix(in srgb, var(--background) 18%, transparent);
 }
 .rule-mark::before {
   content: "";
@@ -56,3 +58,27 @@ body {
   vertical-align: middle;
   background: var(--marigold);
 }
+
+/* Keep the existing Tailwind markup connected to editable theme tokens. */
+[class~="text-[#1f2d2b]"] { color: var(--foreground) !important; }
+[class~="text-[#536b60]"] { color: var(--sage) !important; }
+[class~="text-[#fbf8f2]"] { color: var(--paper) !important; }
+[class~="text-[#c48a3a]"] { color: var(--marigold) !important; }
+[class~="text-[#b8786f]"] { color: var(--rose) !important; }
+[class~="text-[#e4bb72]"] { color: var(--marigold) !important; }
+[class~="bg-[#1f2d2b]"] { background-color: var(--foreground) !important; }
+[class~="bg-[#536b60]"] { background-color: var(--sage) !important; }
+[class~="bg-[#fbf8f2]"] { background-color: var(--paper) !important; }
+[class~="bg-[#d9b5a8]"] { background-color: var(--peach) !important; }
+[class~="border-[#d8cec0]"] { border-color: var(--line) !important; }
+[class~="border-[#b5a998]"] { border-color: var(--line) !important; }
+[class~="border-[#c48a3a]"] { border-color: var(--marigold) !important; }
+[class~="border-[#b8786f]"] { border-color: var(--rose) !important; }
+[class~="border-[#91a397]"] { border-color: color-mix(in srgb, var(--sage) 70%, var(--paper)) !important; }
+[class~="border-y-[#d8cec0]"] { border-color: var(--line) !important; }
+[class~="divide-[#d8cec0"] > :not([hidden]) ~ :not([hidden])"] { border-color: var(--line) !important; }
+[class~="shadow-[18px_20px_0_#d8cec0]"] { --tw-shadow-color: var(--line) !important; }
+[class~="hover:text-[#c48a3a]"]:hover { color: var(--marigold) !important; }
+[class~="hover:bg-[#536b60]"]:hover { background-color: var(--sage) !important; }
+[class~="hover:border-[#1f2d2b]"]:hover { border-color: var(--foreground) !important; }
+[class~="hover:bg-[#cda095]"]:hover { background-color: color-mix(in srgb, var(--peach) 86%, var(--foreground)) !important; }

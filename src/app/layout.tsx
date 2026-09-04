@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import { getMemorialSettings } from "@/lib/memorial";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,15 +20,29 @@ const body = DM_Sans({
   subsets: ["latin"],
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const settings = await getMemorialSettings();
+  const themeStyle = {
+    "--background": settings.colors.background,
+    "--foreground": settings.colors.foreground,
+    "--paper": settings.colors.paper,
+    "--sage": settings.colors.sage,
+    "--marigold": settings.colors.accent,
+    "--line": settings.colors.line,
+    "--rose": settings.colors.rose,
+    "--peach": settings.colors.peach,
+  } as React.CSSProperties;
+
   return (
     <html
       lang="en"
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body style={themeStyle} className="min-h-full flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }
