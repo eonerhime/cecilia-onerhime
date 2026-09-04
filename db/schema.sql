@@ -19,6 +19,81 @@ create table if not exists media_submissions (
 create index if not exists tributes_approved_created_idx on tributes (status, created_at desc);
 create index if not exists media_approved_created_idx on media_submissions (status, created_at desc);
 
+create table if not exists templates (
+  id text primary key,
+  name text not null,
+  slug text not null unique,
+  component_key text not null,
+  description text not null default '',
+  config jsonb not null default '{}'::jsonb,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists tenants (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  name text not null,
+  template_id text not null references templates(id),
+  status text not null default 'active' check (status in ('active', 'suspended', 'archived')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  display_name text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists tenant_memberships (
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin', 'editor', 'moderator', 'viewer')),
+  created_at timestamptz not null default now(),
+  primary key (tenant_id, user_id)
+);
+
+insert into templates (id, name, slug, component_key, description)
+values
+  ('editorial-memory', 'Editorial Memory', 'editorial-memory', 'editorial', 'Warm editorial memorial layout with generous typography.'),
+  ('quiet-gallery', 'Quiet Gallery', 'quiet-gallery', 'gallery', 'Image-led layout for families with a large photo collection.'),
+  ('bright-celebration', 'Bright Celebration', 'bright-celebration', 'celebration', 'Lighter event layout for birthdays and celebrations.')
+on conflict (id) do nothing;
+
+insert into tenants (id, slug, name, template_id)
+values ('00000000-0000-0000-0000-000000000001', 'cecilia-onerhime', 'Cecilia Onerhime', 'editorial-memory')
+on conflict (id) do nothing;
+
+alter table tributes add column if not exists tenant_id uuid;
+alter table media_submissions add column if not exists tenant_id uuid;
+alter table contact_inquiries add column if not exists tenant_id uuid;
+alter table memorial_settings add column if not exists tenant_id uuid;
+
+update tributes set tenant_id = '00000000-0000-0000-0000-000000000001' where tenant_id is null;
+update media_submissions set tenant_id = '00000000-0000-0000-0000-000000000001' where tenant_id is null;
+update contact_inquiries set tenant_id = '00000000-0000-0000-0000-000000000001' where tenant_id is null;
+update memorial_settings set tenant_id = '00000000-0000-0000-0000-000000000001' where tenant_id is null;
+
+alter table tributes alter column tenant_id set not null;
+alter table media_submissions alter column tenant_id set not null;
+alter table contact_inquiries alter column tenant_id set not null;
+alter table memorial_settings alter column tenant_id set not null;
+
+alter table tributes drop constraint if exists tributes_tenant_id_fkey;
+alter table media_submissions drop constraint if exists media_submissions_tenant_id_fkey;
+alter table contact_inquiries drop constraint if exists contact_inquiries_tenant_id_fkey;
+alter table memorial_settings drop constraint if exists memorial_settings_tenant_id_fkey;
+alter table tributes add constraint tributes_tenant_id_fkey foreign key (tenant_id) references tenants(id) on delete cascade;
+alter table media_submissions add constraint media_submissions_tenant_id_fkey foreign key (tenant_id) references tenants(id) on delete cascade;
+alter table contact_inquiries add constraint contact_inquiries_tenant_id_fkey foreign key (tenant_id) references tenants(id) on delete cascade;
+alter table memorial_settings add constraint memorial_settings_tenant_id_fkey foreign key (tenant_id) references tenants(id) on delete cascade;
+
+create index if not exists tributes_tenant_status_created_idx on tributes (tenant_id, status, created_at desc);
+create index if not exists media_tenant_status_created_idx on media_submissions (tenant_id, status, created_at desc);
+create index if not exists contact_tenant_created_idx on contact_inquiries (tenant_id, created_at desc);
+create unique index if not exists memorial_settings_tenant_idx on memorial_settings (tenant_id);
+
 create table if not exists contact_inquiries (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -63,6 +138,6 @@ alter table memorial_settings add column if not exists line_color text not null 
 alter table memorial_settings add column if not exists rose_color text not null default '#b8786f';
 alter table memorial_settings add column if not exists peach_color text not null default '#d9b5a8';
 
-insert into memorial_settings (id, display_name, footer_text)
-values ('default', 'Cecilia Onerhime', 'Copyright © is the Moses Onerhime Family 2026 All rights reserved')
+insert into memorial_settings (id, tenant_id, display_name, footer_text)
+values ('default', '00000000-0000-0000-0000-000000000001', 'Cecilia Onerhime', 'Copyright © is the Moses Onerhime Family 2026 All rights reserved')
 on conflict (id) do nothing;

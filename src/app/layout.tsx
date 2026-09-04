@@ -40,7 +40,11 @@ export default async function RootLayout({
       lang="en"
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
-      <body style={themeStyle} className="min-h-full flex flex-col">
+      <body
+        data-template={settings.templateId}
+        style={themeStyle}
+        className="min-h-full flex flex-col"
+      >
         {children}
       </body>
     </html>

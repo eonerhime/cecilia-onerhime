@@ -8,6 +8,10 @@ Run `db/schema.sql` once in the Neon SQL Editor. Keep `DATABASE_URL`, `DIRECT_UR
 
 Visitor image uploads and admin bulk image imports need a Vercel Blob store and `BLOB_READ_WRITE_TOKEN`. The media table is ready for approved image and YouTube/Vimeo URL records. In `/admin`, use the CSV template with `name,tribute` columns for bulk tribute imports; imports are created as pending and must be approved.
 
+## Commercial architecture
+
+The database is tenant-ready: each tenant has an isolated content owner, memberships with roles (`owner`, `admin`, `editor`, `moderator`, `viewer`), and a selectable template. Starter templates are `editorial-memory`, `quiet-gallery`, and `bright-celebration`. The existing Cecilia site is migrated to the `cecilia-onerhime` tenant; new onboarding should create a tenant and membership rather than reusing the default tenant.
+
 ## Getting Started
 
 First, run the development server:

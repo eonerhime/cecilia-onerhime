@@ -135,3 +135,20 @@ body {
     var(--foreground)
   ) !important;
 }
+
+body[data-template="quiet-gallery"] .photo-placeholder,
+body[data-template="quiet-gallery"] [class*="rounded-[48%"] {
+  border-radius: 0;
+}
+body[data-template="quiet-gallery"] .display-font {
+  letter-spacing: 0.01em;
+}
+body[data-template="bright-celebration"] .photo-placeholder {
+  border-radius: 1rem;
+}
+body[data-template="bright-celebration"] [class*="rounded-full"] {
+  border-radius: 0.5rem;
+}
+body[data-template="bright-celebration"] .display-font {
+  font-weight: 700;
+}

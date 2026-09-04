@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 function getClientKey(request: Request) {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await sql`insert into tributes (name, message) values (${name}, ${message})`;
+    await sql`insert into tributes (tenant_id, name, message) values (${DEFAULT_TENANT_ID}, ${name}, ${message})`;
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Tribute submission failed", error);

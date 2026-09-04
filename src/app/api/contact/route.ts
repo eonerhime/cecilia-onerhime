@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 const projectTypes = ["memorial", "birthday", "celebration", "other"] as const;
 
@@ -41,8 +42,8 @@ export async function POST(request: Request) {
     }
 
     await sql`
-      insert into contact_inquiries (name, email, project_type, message)
-      values (${name}, ${email}, ${projectType}, ${message})
+      insert into contact_inquiries (tenant_id, name, email, project_type, message)
+      values (${DEFAULT_TENANT_ID}, ${name}, ${email}, ${projectType}, ${message})
     `;
     return NextResponse.json({ data: { received: true } });
   } catch (error) {

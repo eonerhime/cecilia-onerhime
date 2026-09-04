@@ -17,6 +17,9 @@ type Media = {
   createdAt: string;
 };
 type MemorialSettings = {
+  displayName: string;
+  templateId: string;
+  heroImageUrl: string;
   footerText: string;
   colors: Record<
     | "background"
@@ -227,6 +230,7 @@ export default function AdminDashboard() {
         <form
           onSubmit={saveSettings}
           className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6"
+          id="site-settings"
         >
           <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#d8cec0] pb-4">
             <div>
@@ -242,6 +246,44 @@ export default function AdminDashboard() {
               {savingSettings ? "Saving..." : "Save appearance"}
             </button>
           </div>
+          <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
+            Website template
+            <select
+              value={settings.templateId}
+              onChange={(event) =>
+                setSettings({ ...settings, templateId: event.target.value })
+              }
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
+            >
+              <option value="editorial-memory">Editorial Memory</option>
+              <option value="quiet-gallery">Quiet Gallery</option>
+              <option value="bright-celebration">Bright Celebration</option>
+            </select>
+          </label>
+          <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
+            Site name
+            <input
+              required
+              maxLength={100}
+              value={settings.displayName}
+              onChange={(event) =>
+                setSettings({ ...settings, displayName: event.target.value })
+              }
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
+            />
+          </label>
+          <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
+            Hero image URL
+            <input
+              type="url"
+              value={settings.heroImageUrl}
+              onChange={(event) =>
+                setSettings({ ...settings, heroImageUrl: event.target.value })
+              }
+              placeholder="Optional public image URL"
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none placeholder:text-[#8b9c8b]"
+            />
+          </label>
           <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
             Footer copyright
             <input

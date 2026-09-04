@@ -1,7 +1,10 @@
 import { getDatabase } from "@/lib/db";
+import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 
 export const defaultMemorialSettings = {
   displayName: "Cecilia Onerhime",
+  templateId: "editorial-memory",
+  heroImageUrl: "",
   footerText:
     "Copyright © is the Moses Onerhime Family 2026 All rights reserved",
   colors: {
@@ -33,14 +36,21 @@ export async function getMemorialSettings() {
   try {
     const sql = getDatabase();
     const [settings] = await sql`
-      select display_name, footer_text, background_color, foreground_color,
-        paper_color, sage_color, accent_color, line_color, rose_color, peach_color
+      select memorial_settings.display_name, memorial_settings.footer_text,
+        memorial_settings.hero_image_url, tenants.template_id,
+        memorial_settings.background_color, memorial_settings.foreground_color,
+        memorial_settings.paper_color, memorial_settings.sage_color,
+        memorial_settings.accent_color, memorial_settings.line_color,
+        memorial_settings.rose_color, memorial_settings.peach_color
       from memorial_settings
-      where id = 'default'
+      join tenants on tenants.id = memorial_settings.tenant_id
+      where memorial_settings.tenant_id = ${DEFAULT_TENANT_ID}
     `;
     if (!settings) return defaultMemorialSettings;
     return {
       displayName: settings.display_name,
+      templateId: settings.template_id,
+      heroImageUrl: settings.hero_image_url,
       footerText: settings.footer_text,
       colors: {
         background: settings.background_color,
@@ -66,14 +76,14 @@ export async function getApprovedMemories() {
       sql`
         select id, name, message
         from tributes
-        where status = 'approved'
+        where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
         order by created_at desc
         limit 3
       `,
       sql`
         select id, media_url, media_type, caption
         from media_submissions
-        where status = 'approved'
+        where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
         order by created_at desc
         limit 6
       `,
