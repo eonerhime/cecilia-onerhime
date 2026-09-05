@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { getMemorialSettings } from "@/lib/memorial";
+import { EditModeProvider } from "@/components/edit-mode";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "In loving memory of Cecilia Onerhime",
-  description:
-    "A gathering place for the life, love, and legacy of Cecilia Onerhime.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getMemorialSettings();
+  return {
+    title: `In loving memory of ${settings.displayName}`,
+    description: `A gathering place for the life, love, and legacy of ${settings.displayName}.`,
+  };
+}
 
 const display = Cormorant_Garamond({
   variable: "--font-display",
@@ -45,7 +48,7 @@ export default async function RootLayout({
         style={themeStyle}
         className="min-h-full flex flex-col"
       >
-        {children}
+        <EditModeProvider>{children}</EditModeProvider>
       </body>
     </html>
   );

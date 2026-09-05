@@ -205,3 +205,11 @@ create table if not exists pending_consents (
 );
 
 create index if not exists pending_consents_user_idx on pending_consents (user_id);
+
+create table if not exists content_blocks (
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  block_key text not null,
+  value text not null default '',
+  updated_at timestamptz not null default now(),
+  primary key (tenant_id, block_key)
+);
