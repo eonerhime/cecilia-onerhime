@@ -227,3 +227,5 @@ create table if not exists content_blocks (
   updated_at timestamptz not null default now(),
   primary key (tenant_id, block_key)
 );
+
+alter table memorial_settings add column if not exists music_volume smallint not null default 80 check (music_volume between 0 and 100);

@@ -54,6 +54,7 @@ export default async function RootLayout({
           musicUrl={settings.musicUrl}
           musicAutoplay={settings.musicAutoplay}
           musicLoop={settings.musicLoop}
+          musicVolume={settings.musicVolume}
         />
       </body>
     </html>

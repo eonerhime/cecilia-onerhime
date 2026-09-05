@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
 import { requireSession } from "@/lib/admin-auth";
+import { sendEmail } from "@/lib/email";
 import type { Role } from "@/lib/session";
 
 const ALLOWED_ROLES: Role[] = ["owner", "admin", "editor", "moderator", "viewer"];
@@ -25,8 +26,22 @@ export async function POST(request: Request) {
       values (${session.tenantId}, ${email}, ${role})
       on conflict (tenant_id, email) do update set role = excluded.role
     `;
+
+    let warning: string | undefined;
+    try {
+      const adminUrl = new URL("/admin", request.url).toString();
+      await sendEmail({
+        to: email,
+        subject: "You've been invited to the Cecilia Onerhime family admin",
+        html: `<p>You've been invited to help manage the Cecilia Onerhime memorial site as a <strong>${role}</strong>.</p><p><a href="${adminUrl}">Sign in here</a> with this email address — via Google, or by creating an email/password account — to get started.</p>`,
+      });
+    } catch (emailError) {
+      console.error("Invite email failed to send", emailError);
+      warning = "Invite saved, but the notification email could not be sent.";
+    }
+
     revalidatePath("/admin");
-    return NextResponse.json({ data: { email, role } });
+    return NextResponse.json({ data: { email, role }, warning });
   } catch (error) {
     console.error("Invite creation failed", error);
     return NextResponse.json(

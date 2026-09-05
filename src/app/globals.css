@@ -27,6 +27,11 @@ body {
   background: var(--marigold);
   color: var(--paper);
 }
+a,
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
 .display-font {
   font-family: var(--font-display), Georgia, serif;
 }

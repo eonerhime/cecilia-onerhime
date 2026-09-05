@@ -1,9 +1,11 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { hasRole, type Role } from "@/lib/roles";
 
 type EditModeContextValue = {
+  loggedIn: boolean;
   canEdit: boolean;
   editMode: boolean;
   activeEditorId: string | null;
@@ -11,6 +13,7 @@ type EditModeContextValue = {
 };
 
 const EditModeContext = createContext<EditModeContextValue>({
+  loggedIn: false,
   canEdit: false,
   editMode: false,
   activeEditorId: null,
@@ -22,6 +25,8 @@ export function useEditMode() {
 }
 
 export function EditModeProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin") ?? false;
   const [role, setRole] = useState<Role | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [activeEditorId, setActiveEditorId] = useState<string | null>(null);
@@ -43,10 +48,16 @@ export function EditModeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <EditModeContext.Provider
-      value={{ canEdit, editMode: canEdit && editMode, activeEditorId, setActiveEditorId }}
+      value={{
+        loggedIn: role !== null,
+        canEdit,
+        editMode: canEdit && editMode,
+        activeEditorId,
+        setActiveEditorId,
+      }}
     >
       {children}
-      {canEdit && (
+      {canEdit && !isAdminRoute && (
         <button
           type="button"
           onClick={() => {

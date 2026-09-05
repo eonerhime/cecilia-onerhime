@@ -171,6 +171,7 @@ export type EditableSettings = {
   musicUrl: string;
   musicAutoplay: string;
   musicLoop: boolean;
+  musicVolume: number;
   colors: Record<string, string>;
 };
 
@@ -239,6 +240,7 @@ export function HeroVisualEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [uploaded, setUploaded] = useState(false);
 
   if (!canEdit || !editMode) return null;
 
@@ -246,6 +248,7 @@ export function HeroVisualEditor({
     if (!file) return;
     setUploading(true);
     setUploadError("");
+    setUploaded(false);
     const form = new FormData();
     form.set("file", file);
     const response = await fetch("/api/admin/upload-image", {
@@ -259,6 +262,7 @@ export function HeroVisualEditor({
       return;
     }
     setHeroImageUrl(result.data.url);
+    setUploaded(true);
   }
 
   async function save() {
@@ -287,6 +291,7 @@ export function HeroVisualEditor({
         onClick={() => {
           setHeroImageUrl(settings.heroImageUrl);
           setCaptionDraft(caption);
+          setUploaded(false);
           setActiveEditorId(editorId);
         }}
         aria-label="Edit hero image and caption"
@@ -316,6 +321,11 @@ export function HeroVisualEditor({
           </label>
           {uploadError && (
             <p className="mt-1 text-xs text-[#b8786f]">{uploadError}</p>
+          )}
+          {uploaded && (
+            <p className="mt-1 text-xs text-[#536b60]">
+              Photo uploaded — click Save below to publish it.
+            </p>
           )}
           <label className="mt-3 block text-xs font-semibold text-[#1f2d2b]">
             Caption
