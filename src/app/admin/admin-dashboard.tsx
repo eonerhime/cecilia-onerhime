@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role, Session } from "@/lib/session";
+import { ROLE_DESCRIPTIONS, hasRole } from "@/lib/roles";
 import type { MusicAutoplay } from "@/lib/memorial";
 import type {
   ContactInquiry,
@@ -88,17 +89,17 @@ export default function AdminDashboard({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  async function persistSettings(next: MemorialSettings) {
+  async function persistMediaField(field: "heroImageUrl" | "musicUrl", value: string) {
     const response = await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "settings", ...next }),
+      body: JSON.stringify({ type: "media", field, value }),
     });
     if (!response.ok) {
-      setError("Uploaded, but saving the site settings failed. Try Save appearance below.");
+      setError("Uploaded, but saving it failed. Please try again.");
       return false;
     }
-    setSettings(next);
+    setSettings((current) => ({ ...current, [field]: value }));
     return true;
   }
 
@@ -119,7 +120,7 @@ export default function AdminDashboard({
       setError(result?.error || "Upload failed.");
       return;
     }
-    const saved = await persistSettings({ ...settings, heroImageUrl: result.data.url });
+    const saved = await persistMediaField("heroImageUrl", result.data.url);
     setUploadingHero(false);
     if (saved) {
       setNotice("Hero image uploaded and saved.");
@@ -144,7 +145,7 @@ export default function AdminDashboard({
       setError(result?.error || "Upload failed.");
       return;
     }
-    const saved = await persistSettings({ ...settings, musicUrl: result.data.url });
+    const saved = await persistMediaField("musicUrl", result.data.url);
     setUploadingMusic(false);
     if (saved) {
       setNotice("Music track uploaded and saved.");
@@ -275,6 +276,23 @@ export default function AdminDashboard({
     router.refresh();
   }
 
+  async function changeMemberRole(userId: string, role: Role) {
+    setError("");
+    setNotice("");
+    const response = await fetch("/api/admin/members", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, role }),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.error || "Unable to change that member's role.");
+      return;
+    }
+    setNotice("Role updated.");
+    router.refresh();
+  }
+
   async function cancelInvite(email: string) {
     const response = await fetch("/api/admin/members", {
       method: "DELETE",
@@ -289,6 +307,9 @@ export default function AdminDashboard({
   }
 
   const total = initialTributes.length + initialMedia.length;
+  const canManageSettings = hasRole(session.role, "admin");
+  const canUploadMedia = hasRole(session.role, "editor");
+  const canModerate = hasRole(session.role, "moderator");
 
   return (
     <div className="mt-12 space-y-12">
@@ -338,11 +359,12 @@ export default function AdminDashboard({
           )}
         </div>
       </div>
-      {total === 0 && (
+      {canModerate && total === 0 && (
         <p className="border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm text-[#536b60]">
           Nothing is waiting for review.
         </p>
       )}
+      {canManageSettings && (
       <form
         onSubmit={saveSettings}
         className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6"
@@ -503,7 +525,41 @@ export default function AdminDashboard({
           ))}
         </div>
       </form>
+      )}
+      {!canManageSettings && canUploadMedia && (
+        <section className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6">
+          <div className="border-b border-[#d8cec0] pb-4">
+            <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
+              Site settings
+            </p>
+            <h2 className="display-font mt-2 text-4xl">Uploads</h2>
+          </div>
+          <div className="mt-6">
+            <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+              {uploadingHero ? "Uploading..." : "Upload a hero photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(event) => uploadHeroImage(event.target.files?.[0] || null)}
+              />
+            </label>
+          </div>
+          <div className="mt-4">
+            <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+              {uploadingMusic ? "Uploading..." : "Upload a music track"}
+              <input
+                type="file"
+                accept="audio/*"
+                className="sr-only"
+                onChange={(event) => uploadMusic(event.target.files?.[0] || null)}
+              />
+            </label>
+          </div>
+        </section>
+      )}
 
+      {canUploadMedia && (
       <section className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6">
         <div className="border-b border-[#d8cec0] pb-4">
           <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
@@ -563,7 +619,9 @@ export default function AdminDashboard({
           </div>
         </div>
       </section>
+      )}
 
+      {canModerate && (
       <ReviewSection title="Tributes" count={initialTributes.length}>
         {initialTributes.map((item) => (
           <ReviewCard
@@ -579,7 +637,9 @@ export default function AdminDashboard({
           </ReviewCard>
         ))}
       </ReviewSection>
+      )}
 
+      {canModerate && (
       <ReviewSection title="Gallery submissions" count={initialMedia.length}>
         {initialMedia.map((item) => (
           <ReviewCard
@@ -603,6 +663,7 @@ export default function AdminDashboard({
           </ReviewCard>
         ))}
       </ReviewSection>
+      )}
 
       <section className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6">
         <div className="mb-5 flex items-baseline justify-between border-b border-[#d8cec0] pb-3">
@@ -675,10 +736,11 @@ export default function AdminDashboard({
                 onChange={(event) =>
                   setInviteRole(event.target.value as Role)
                 }
+                title={ROLE_DESCRIPTIONS[inviteRole]}
                 className="mt-2 border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
               >
                 {ASSIGNABLE_ROLES.map((role) => (
-                  <option key={role} value={role}>
+                  <option key={role} value={role} title={ROLE_DESCRIPTIONS[role]}>
                     {role}
                   </option>
                 ))}
@@ -691,6 +753,9 @@ export default function AdminDashboard({
               {invitingBusy ? "Inviting..." : "Invite"}
             </button>
           </form>
+          <p className="mt-2 text-xs leading-5 text-[#536b60]">
+            {ROLE_DESCRIPTIONS[inviteRole]}
+          </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {initialMembers.map((member) => (
@@ -702,9 +767,26 @@ export default function AdminDashboard({
                   <p className="truncate text-sm font-semibold text-[#1f2d2b]">
                     {member.displayName || member.email}
                   </p>
-                  <p className="text-xs uppercase tracking-[.14em] text-[#536b60]">
-                    {member.role}
-                  </p>
+                  {member.userId === session.userId ? (
+                    <p className="text-xs uppercase tracking-[.14em] text-[#536b60]">
+                      {member.role}
+                    </p>
+                  ) : (
+                    <select
+                      value={member.role}
+                      onChange={(event) =>
+                        changeMemberRole(member.userId, event.target.value as Role)
+                      }
+                      title={ROLE_DESCRIPTIONS[member.role as Role]}
+                      className="mt-1 border-b border-[#b5a998] bg-transparent text-xs uppercase tracking-[.14em] text-[#536b60] outline-none"
+                    >
+                      {ASSIGNABLE_ROLES.map((role) => (
+                        <option key={role} value={role} title={ROLE_DESCRIPTIONS[role]}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 {member.userId !== session.userId && (
                   <button
@@ -751,14 +833,16 @@ export default function AdminDashboard({
             {notice}
           </p>
         )}
-        <button
-          form="site-settings"
-          type="submit"
-          disabled={savingSettings}
-          className="rounded-full bg-[#1f2d2b] px-5 py-3 text-xs font-semibold text-[#fbf8f2] shadow-lg disabled:opacity-60"
-        >
-          {savingSettings ? "Saving..." : "Save appearance"}
-        </button>
+        {canManageSettings && (
+          <button
+            form="site-settings"
+            type="submit"
+            disabled={savingSettings}
+            className="rounded-full bg-[#1f2d2b] px-5 py-3 text-xs font-semibold text-[#fbf8f2] shadow-lg disabled:opacity-60"
+          >
+            {savingSettings ? "Saving..." : "Save appearance"}
+          </button>
+        )}
       </div>
     </div>
   );

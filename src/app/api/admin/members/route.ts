@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
 import { requireSession } from "@/lib/admin-auth";
 import { sendEmail } from "@/lib/email";
+import { ROLE_DESCRIPTIONS } from "@/lib/roles";
 import type { Role } from "@/lib/session";
 
 const ALLOWED_ROLES: Role[] = ["owner", "admin", "editor", "moderator", "viewer"];
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       await sendEmail({
         to: email,
         subject: "You've been invited to the Cecilia Onerhime family admin",
-        html: `<p>You've been invited to help manage the Cecilia Onerhime memorial site as a <strong>${role}</strong>.</p><p><a href="${adminUrl}">Sign in here</a> with this email address — via Google, or by creating an email/password account — to get started.</p>`,
+        html: `<p>You've been invited to help manage the Cecilia Onerhime memorial site as a <strong>${role}</strong>.</p><p>${ROLE_DESCRIPTIONS[role as Role]}</p><p><a href="${adminUrl}">Sign in here</a> with this email address — via Google, or by creating an email/password account — to get started.</p>`,
       });
     } catch (emailError) {
       console.error("Invite email failed to send", emailError);
@@ -46,6 +47,44 @@ export async function POST(request: Request) {
     console.error("Invite creation failed", error);
     return NextResponse.json(
       { error: "Unable to send that invite right now." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { session, denied } = await requireSession("owner");
+    if (denied) return denied;
+
+    const body = await request.json();
+    const userId = typeof body.userId === "string" ? body.userId : "";
+    const role = typeof body.role === "string" ? body.role : "";
+
+    if (!userId || !ALLOWED_ROLES.includes(role as Role)) {
+      return NextResponse.json(
+        { error: "Please provide a valid member and role." },
+        { status: 400 },
+      );
+    }
+    if (userId === session.userId) {
+      return NextResponse.json(
+        { error: "You can't change your own role." },
+        { status: 400 },
+      );
+    }
+
+    const sql = getDatabase();
+    await sql`
+      update tenant_memberships set role = ${role}
+      where tenant_id = ${session.tenantId} and user_id = ${userId}
+    `;
+    revalidatePath("/admin");
+    return NextResponse.json({ data: { userId, role } });
+  } catch (error) {
+    console.error("Role change failed", error);
+    return NextResponse.json(
+      { error: "Unable to change that member's role right now." },
       { status: 500 },
     );
   }

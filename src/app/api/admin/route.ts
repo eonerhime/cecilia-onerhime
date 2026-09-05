@@ -9,10 +9,29 @@ type SubmissionStatus = "approved" | "rejected";
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { session, denied } = await requireSession(
-      body.type === "settings" ? "admin" : "moderator",
-    );
+    const minRole =
+      body.type === "settings" ? "admin" : body.type === "media" ? "editor" : "moderator";
+    const { session, denied } = await requireSession(minRole);
     if (denied) return denied;
+
+    if (body.type === "media") {
+      const field = body.field;
+      const value = typeof body.value === "string" ? body.value.trim() : "";
+      if (
+        (field !== "heroImageUrl" && field !== "musicUrl") ||
+        value.length > 1000
+      ) {
+        return NextResponse.json({ error: "Invalid media update." }, { status: 400 });
+      }
+      const sql = getDatabase();
+      if (field === "heroImageUrl") {
+        await sql`update memorial_settings set hero_image_url = ${value}, updated_at = now() where tenant_id = ${session.tenantId}`;
+      } else {
+        await sql`update memorial_settings set music_url = ${value}, updated_at = now() where tenant_id = ${session.tenantId}`;
+      }
+      revalidatePath("/", "layout");
+      return NextResponse.json({ data: { field, value } });
+    }
 
     if (body.type === "settings") {
       const footerText =

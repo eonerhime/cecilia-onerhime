@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/admin-auth";
 const MAX_BYTES = 20 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  const { denied } = await requireSession("admin");
+  const { denied } = await requireSession("editor");
   if (denied) return denied;
 
   try {
