@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role, Session } from "@/lib/session";
+import type { MusicAutoplay } from "@/lib/memorial";
 import type {
   ContactInquiry,
   PendingInvite,
@@ -16,6 +17,9 @@ type MemorialSettings = {
   templateId: string;
   heroImageUrl: string;
   footerText: string;
+  musicUrl: string;
+  musicAutoplay: MusicAutoplay;
+  musicLoop: boolean;
   colors: Record<
     | "background"
     | "foreground"
@@ -70,8 +74,48 @@ export default function AdminDashboard({
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("moderator");
   const [invitingBusy, setInvitingBusy] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [uploadingMusic, setUploadingMusic] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  async function uploadHeroImage(file: File | null) {
+    if (!file) return;
+    setUploadingHero(true);
+    setError("");
+    const form = new FormData();
+    form.set("file", file);
+    const response = await fetch("/api/admin/upload-image", {
+      method: "POST",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    setUploadingHero(false);
+    if (!response.ok) {
+      setError(result?.error || "Upload failed.");
+      return;
+    }
+    setSettings((current) => ({ ...current, heroImageUrl: result.data.url }));
+  }
+
+  async function uploadMusic(file: File | null) {
+    if (!file) return;
+    setUploadingMusic(true);
+    setError("");
+    const form = new FormData();
+    form.set("file", file);
+    const response = await fetch("/api/admin/upload-audio", {
+      method: "POST",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    setUploadingMusic(false);
+    if (!response.ok) {
+      setError(result?.error || "Upload failed.");
+      return;
+    }
+    setSettings((current) => ({ ...current, musicUrl: result.data.url }));
+  }
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -281,18 +325,90 @@ export default function AdminDashboard({
             className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
           />
         </label>
-        <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
-          Hero image URL
-          <input
-            type="url"
-            value={settings.heroImageUrl}
-            onChange={(event) =>
-              setSettings({ ...settings, heroImageUrl: event.target.value })
-            }
-            placeholder="Optional public image URL"
-            className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none placeholder:text-[#8b9c8b]"
-          />
-        </label>
+        <div className="mt-6">
+          <label className="block text-sm font-semibold text-[#1f2d2b]">
+            Hero image URL
+            <input
+              type="url"
+              value={settings.heroImageUrl}
+              onChange={(event) =>
+                setSettings({ ...settings, heroImageUrl: event.target.value })
+              }
+              placeholder="Optional public image URL"
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none placeholder:text-[#8b9c8b]"
+            />
+          </label>
+          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+            {uploadingHero ? "Uploading..." : "Or upload a photo"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => uploadHeroImage(event.target.files?.[0] || null)}
+            />
+          </label>
+        </div>
+        <div className="mt-6 border-t border-[#d8cec0] pt-6">
+          <p className="text-sm font-semibold text-[#1f2d2b]">
+            Background music
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[#536b60]">
+            Browsers block sound from autoplaying until a visitor interacts
+            with the page, so &ldquo;always&rdquo; means it starts the moment
+            they click or scroll rather than the instant the page loads.
+            Visitors always get a visible play/pause control either way.
+          </p>
+          <label className="mt-4 block text-sm font-semibold text-[#1f2d2b]">
+            Music URL
+            <input
+              type="url"
+              value={settings.musicUrl}
+              onChange={(event) =>
+                setSettings({ ...settings, musicUrl: event.target.value })
+              }
+              placeholder="Optional public audio URL"
+              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none placeholder:text-[#8b9c8b]"
+            />
+          </label>
+          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+            {uploadingMusic ? "Uploading..." : "Or upload a track"}
+            <input
+              type="file"
+              accept="audio/*"
+              className="sr-only"
+              onChange={(event) => uploadMusic(event.target.files?.[0] || null)}
+            />
+          </label>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-[#1f2d2b]">
+              Plays on page load
+              <select
+                value={settings.musicAutoplay}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    musicAutoplay: event.target.value as MusicAutoplay,
+                  })
+                }
+                className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
+              >
+                <option value="off">Off (visitor presses play)</option>
+                <option value="once_per_session">Once per visit</option>
+                <option value="always">Every page load</option>
+              </select>
+            </label>
+            <label className="mt-1 flex items-center gap-2 self-end text-sm font-semibold text-[#1f2d2b]">
+              <input
+                type="checkbox"
+                checked={settings.musicLoop}
+                onChange={(event) =>
+                  setSettings({ ...settings, musicLoop: event.target.checked })
+                }
+              />
+              Repeat when it ends
+            </label>
+          </div>
+        </div>
         <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
           Footer copyright
           <input

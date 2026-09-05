@@ -206,6 +206,10 @@ create table if not exists pending_consents (
 
 create index if not exists pending_consents_user_idx on pending_consents (user_id);
 
+alter table memorial_settings add column if not exists music_url text not null default '';
+alter table memorial_settings add column if not exists music_autoplay text not null default 'off';
+alter table memorial_settings add column if not exists music_loop boolean not null default true;
+
 create table if not exists content_blocks (
   tenant_id uuid not null references tenants(id) on delete cascade,
   block_key text not null,

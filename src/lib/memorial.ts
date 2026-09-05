@@ -1,5 +1,8 @@
+import { cache } from "react";
 import { getDatabase } from "@/lib/db";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+
+export type MusicAutoplay = "off" | "always" | "once_per_session";
 
 export const defaultMemorialSettings = {
   displayName: "Cecilia Onerhime",
@@ -7,6 +10,9 @@ export const defaultMemorialSettings = {
   heroImageUrl: "",
   footerText:
     "Copyright © is the Moses Onerhime Family 2026 All rights reserved",
+  musicUrl: "",
+  musicAutoplay: "off" as MusicAutoplay,
+  musicLoop: true,
   colors: {
     background: "#f5f0e8",
     foreground: "#1f2d2b",
@@ -32,12 +38,14 @@ export type ApprovedMedia = {
   caption: string | null;
 };
 
-export async function getMemorialSettings() {
+export const getMemorialSettings = cache(async () => {
   try {
     const sql = getDatabase();
     const [settings] = await sql`
       select memorial_settings.display_name, memorial_settings.footer_text,
         memorial_settings.hero_image_url, tenants.template_id,
+        memorial_settings.music_url, memorial_settings.music_autoplay,
+        memorial_settings.music_loop,
         memorial_settings.background_color, memorial_settings.foreground_color,
         memorial_settings.paper_color, memorial_settings.sage_color,
         memorial_settings.accent_color, memorial_settings.line_color,
@@ -52,6 +60,9 @@ export async function getMemorialSettings() {
       templateId: settings.template_id,
       heroImageUrl: settings.hero_image_url,
       footerText: settings.footer_text,
+      musicUrl: settings.music_url,
+      musicAutoplay: settings.music_autoplay as MusicAutoplay,
+      musicLoop: settings.music_loop,
       colors: {
         background: settings.background_color,
         foreground: settings.foreground_color,
@@ -67,37 +78,50 @@ export async function getMemorialSettings() {
     console.error("Memorial settings lookup failed", error);
     return defaultMemorialSettings;
   }
+});
+
+export async function getApprovedTributesList(limit = 200) {
+  try {
+    const sql = getDatabase();
+    const tributes = await sql`
+      select id, name, message
+      from tributes
+      where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
+      order by created_at desc
+      limit ${limit}
+    `;
+    return tributes as ApprovedTribute[];
+  } catch (error) {
+    console.error("Approved tributes lookup failed", error);
+    return [];
+  }
+}
+
+export async function getApprovedMediaList(limit = 200) {
+  try {
+    const sql = getDatabase();
+    const media = await sql`
+      select id, media_url, media_type, caption
+      from media_submissions
+      where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
+      order by created_at desc
+      limit ${limit}
+    `;
+    return media.map(({ media_url, media_type, ...item }) => ({
+      ...item,
+      mediaUrl: media_url,
+      mediaType: media_type,
+    })) as ApprovedMedia[];
+  } catch (error) {
+    console.error("Approved media lookup failed", error);
+    return [];
+  }
 }
 
 export async function getApprovedMemories() {
-  try {
-    const sql = getDatabase();
-    const [tributes, media] = await Promise.all([
-      sql`
-        select id, name, message
-        from tributes
-        where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
-        order by created_at desc
-        limit 3
-      `,
-      sql`
-        select id, media_url, media_type, caption
-        from media_submissions
-        where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
-        order by created_at desc
-        limit 6
-      `,
-    ]);
-    return {
-      tributes: tributes as ApprovedTribute[],
-      media: media.map(({ media_url, media_type, ...item }) => ({
-        ...item,
-        mediaUrl: media_url,
-        mediaType: media_type,
-      })) as ApprovedMedia[],
-    };
-  } catch (error) {
-    console.error("Approved memories lookup failed", error);
-    return { tributes: [], media: [] };
-  }
+  const [tributes, media] = await Promise.all([
+    getApprovedTributesList(3),
+    getApprovedMediaList(6),
+  ]);
+  return { tributes, media };
 }
