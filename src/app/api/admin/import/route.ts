@@ -1,8 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-auth";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { requireSession } from "@/lib/admin-auth";
 
 const MAX_ROWS = 100;
 const MAX_FILES = 30;
@@ -34,7 +33,7 @@ function parseCsv(value: string) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireAdmin(request);
+  const { session, denied } = await requireSession("editor");
   if (denied) return denied;
 
   try {
@@ -80,7 +79,7 @@ export async function POST(request: Request) {
         );
       }
       for (const row of validRows)
-        await sql`insert into tributes (tenant_id, name, message) values (${DEFAULT_TENANT_ID}, ${row.name}, ${row.message})`;
+        await sql`insert into tributes (tenant_id, name, message) values (${session.tenantId}, ${row.name}, ${row.message})`;
       return NextResponse.json({ data: { imported: validRows.length } });
     }
 
@@ -113,7 +112,7 @@ export async function POST(request: Request) {
         }),
       );
       for (const mediaUrl of uploaded)
-        await sql`insert into media_submissions (tenant_id, name, media_url, media_type) values (${DEFAULT_TENANT_ID}, 'Family upload', ${mediaUrl}, 'image')`;
+        await sql`insert into media_submissions (tenant_id, name, media_url, media_type) values (${session.tenantId}, 'Family upload', ${mediaUrl}, 'image')`;
       return NextResponse.json({ data: { imported: uploaded.length } });
     }
 

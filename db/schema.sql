@@ -141,3 +141,67 @@ alter table memorial_settings add column if not exists peach_color text not null
 insert into memorial_settings (id, tenant_id, display_name, footer_text)
 values ('default', '00000000-0000-0000-0000-000000000001', 'Cecilia Onerhime', 'Copyright © is the Moses Onerhime Family 2026 All rights reserved')
 on conflict (id) do nothing;
+
+-- Note: this table pre-existed in the shared Neon database from earlier,
+-- since-abandoned MRU auth work (see ADR-002 in the memories-r-us docs on
+-- the shared database). Its shape (uuid id + token_hash, no tenant_id) is
+-- kept as-is rather than altered, since it was already there; sessions are
+-- not tenant-scoped here because CO is single-tenant today, and tenant is
+-- resolved via tenant_memberships at lookup time instead.
+create table if not exists auth_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  token_hash text not null unique,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists auth_sessions_user_idx on auth_sessions (user_id);
+create index if not exists auth_sessions_expires_idx on auth_sessions (expires_at);
+
+create table if not exists admin_invites (
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  email text not null,
+  role text not null check (role in ('owner', 'admin', 'editor', 'moderator', 'viewer')),
+  invited_at timestamptz not null default now(),
+  primary key (tenant_id, email)
+);
+
+insert into admin_invites (tenant_id, email, role)
+values ('00000000-0000-0000-0000-000000000001', 'e1rhyme.dev@gmail.com', 'owner')
+on conflict (tenant_id, email) do nothing;
+
+alter table users add column if not exists password_hash text;
+alter table users add column if not exists email_verified_at timestamptz;
+
+create table if not exists email_verifications (
+  id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists email_verifications_user_idx on email_verifications (user_id);
+
+create table if not exists password_reset_tokens (
+  id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
+create index if not exists password_reset_tokens_user_idx on password_reset_tokens (user_id);
+
+alter table users add column if not exists terms_accepted_at timestamptz;
+
+create table if not exists pending_consents (
+  id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin', 'editor', 'moderator', 'viewer')),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists pending_consents_user_idx on pending_consents (user_id);
