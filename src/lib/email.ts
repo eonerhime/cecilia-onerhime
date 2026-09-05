@@ -20,5 +20,8 @@ export async function sendEmail({
 }) {
   const from = process.env.EMAIL_FROM;
   if (!from) throw new Error("EMAIL_FROM is not configured");
-  await getClient().emails.send({ from, to, subject, html });
+  // The resend SDK resolves with { data, error } on API failures rather
+  // than rejecting, so a caller's try/catch would otherwise never see them.
+  const { error } = await getClient().emails.send({ from, to, subject, html });
+  if (error) throw new Error(error.message || "Resend rejected the email");
 }
