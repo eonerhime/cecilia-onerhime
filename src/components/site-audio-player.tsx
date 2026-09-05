@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MusicAutoplay } from "@/lib/memorial";
 
 const SESSION_KEY = "co_music_played";
+const VOLUME_KEY = "co_music_volume";
 
 function PlayIcon() {
   return (
@@ -25,14 +26,43 @@ export default function SiteAudioPlayer({
   musicUrl,
   musicAutoplay,
   musicLoop,
+  musicVolume,
 }: {
   musicUrl: string;
   musicAutoplay: MusicAutoplay;
   musicLoop: boolean;
+  musicVolume: number;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [needsInteraction, setNeedsInteraction] = useState(false);
+  const [volume, setVolume] = useState(musicVolume);
+
+  function markPlayed() {
+    if (musicAutoplay !== "once_per_session") return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // Ignore — this is only a best-effort "don't nag every reload" flag.
+    }
+  }
+
+  useEffect(() => {
+    // Hydrating from sessionStorage (an external system) on mount, not
+    // deriving from props/state — the recommended shape for this would be
+    // reading it during render, but that isn't SSR-safe here.
+    try {
+      const stored = sessionStorage.getItem(VOLUME_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored) setVolume(Number(stored));
+    } catch {
+      // Storage unavailable — just keep the admin-configured default.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = volume / 100;
+  }, [volume]);
 
   useEffect(() => {
     if (!musicUrl || musicAutoplay === "off") return;
@@ -82,16 +112,9 @@ export default function SiteAudioPlayer({
       document.removeEventListener("keydown", tryPlay);
       document.removeEventListener("touchstart", tryPlay);
     };
+    // Only re-run when needsInteraction changes, not on every markPlayed identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsInteraction]);
-
-  function markPlayed() {
-    if (musicAutoplay !== "once_per_session") return;
-    try {
-      sessionStorage.setItem(SESSION_KEY, "1");
-    } catch {
-      // Ignore — this is only a best-effort "don't nag every reload" flag.
-    }
-  }
 
   function toggle() {
     const audio = audioRef.current;
@@ -107,20 +130,48 @@ export default function SiteAudioPlayer({
       .catch(() => {});
   }
 
+  function changeVolume(next: number) {
+    setVolume(next);
+    try {
+      sessionStorage.setItem(VOLUME_KEY, String(next));
+    } catch {
+      // Ignore — this is only a best-effort per-visit preference.
+    }
+  }
+
   if (!musicUrl) return null;
 
   return (
     <>
-      <audio ref={audioRef} src={musicUrl} loop={musicLoop} preload="none" />
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={playing ? "Pause music" : "Play music"}
-        aria-pressed={playing}
-        className="fixed bottom-5 left-5 z-50 flex h-11 w-11 items-center justify-center rounded-full bg-[#1f2d2b] text-[#fbf8f2] shadow-lg"
-      >
-        {playing ? <PauseIcon /> : <PlayIcon />}
-      </button>
+      <audio
+        ref={audioRef}
+        src={musicUrl}
+        loop={musicLoop}
+        preload="none"
+        onLoadedMetadata={(event) => {
+          event.currentTarget.volume = volume / 100;
+        }}
+      />
+      <div className="fixed bottom-5 left-5 z-50 flex items-center gap-2 rounded-full bg-[#1f2d2b] py-2 pl-2 pr-1 text-[#fbf8f2] shadow-lg">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={playing ? "Pause music" : "Play music"}
+          aria-pressed={playing}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+        >
+          {playing ? <PauseIcon /> : <PlayIcon />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={volume}
+          onChange={(event) => changeVolume(Number(event.target.value))}
+          aria-label="Music volume"
+          className="h-1 w-16 accent-[#c48a3a] sm:w-24"
+        />
+      </div>
     </>
   );
 }

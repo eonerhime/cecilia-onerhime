@@ -26,6 +26,9 @@ export async function PATCH(request: Request) {
       const musicAutoplay =
         typeof body.musicAutoplay === "string" ? body.musicAutoplay : "off";
       const musicLoop = body.musicLoop !== false;
+      const musicVolume = Number.isInteger(body.musicVolume)
+        ? (body.musicVolume as number)
+        : 80;
       const templateId =
         typeof body.templateId === "string"
           ? body.templateId
@@ -57,6 +60,8 @@ export async function PATCH(request: Request) {
         heroImageUrl.length > 1000 ||
         musicUrl.length > 1000 ||
         !allowedAutoplay.includes(musicAutoplay) ||
+        musicVolume < 0 ||
+        musicVolume > 100 ||
         !allowedTemplates.includes(templateId) ||
         !colors ||
         colorNames.some((name) => !isHexColor(colors[name]))
@@ -70,18 +75,18 @@ export async function PATCH(request: Request) {
       await sql`update tenants set template_id = ${templateId} where id = ${session.tenantId}`;
       await sql`
           insert into memorial_settings (
-            id, tenant_id, display_name, footer_text, hero_image_url, music_url, music_autoplay, music_loop,
+            id, tenant_id, display_name, footer_text, hero_image_url, music_url, music_autoplay, music_loop, music_volume,
             background_color, foreground_color, paper_color,
           sage_color, accent_color, line_color, rose_color, peach_color, updated_at
         ) values (
-          'default', ${session.tenantId}, ${displayName}, ${footerText}, ${heroImageUrl}, ${musicUrl}, ${musicAutoplay}, ${musicLoop},
+          'default', ${session.tenantId}, ${displayName}, ${footerText}, ${heroImageUrl}, ${musicUrl}, ${musicAutoplay}, ${musicLoop}, ${musicVolume},
           ${colors.background}, ${colors.foreground},
           ${colors.paper}, ${colors.sage}, ${colors.accent}, ${colors.line},
           ${colors.rose}, ${colors.peach}, now()
         )
         on conflict (id) do update set
           display_name = ${displayName}, footer_text = ${footerText}, hero_image_url = ${heroImageUrl},
-          music_url = ${musicUrl}, music_autoplay = ${musicAutoplay}, music_loop = ${musicLoop},
+          music_url = ${musicUrl}, music_autoplay = ${musicAutoplay}, music_loop = ${musicLoop}, music_volume = ${musicVolume},
           background_color = ${colors.background},
           foreground_color = ${colors.foreground}, paper_color = ${colors.paper},
           sage_color = ${colors.sage}, accent_color = ${colors.accent},
@@ -98,6 +103,7 @@ export async function PATCH(request: Request) {
           musicUrl,
           musicAutoplay,
           musicLoop,
+          musicVolume,
           colors,
         },
       });

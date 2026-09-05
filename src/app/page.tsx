@@ -8,6 +8,7 @@ import {
 import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditableSetting, HeroVisualEditor } from "@/components/editable";
+import AdminNavLink from "@/components/admin-nav-link";
 
 const localImages = [
   "/images/WhatsApp Image 2026-09-02 at 19.09.54 (1).jpeg",
@@ -80,6 +81,7 @@ export default async function Home() {
           >
             Programme
           </a>
+          <AdminNavLink className="hover:text-[#c48a3a]" />
         </div>
       </nav>
       <section className="mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:px-10 lg:pb-32 lg:pt-16">
@@ -433,6 +435,9 @@ export default async function Home() {
           </Link>
           <Link href="/terms" className="hover:text-[#c48a3a]">
             Terms
+          </Link>
+          <Link href="/admin" className="hover:text-[#c48a3a]">
+            Family sign-in
           </Link>
           <EditableSetting instanceId="footer" field="footerText" settings={settings}>
             <p>{settings.footerText}</p>

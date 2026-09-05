@@ -13,6 +13,7 @@ export const defaultMemorialSettings = {
   musicUrl: "",
   musicAutoplay: "off" as MusicAutoplay,
   musicLoop: true,
+  musicVolume: 80,
   colors: {
     background: "#f5f0e8",
     foreground: "#1f2d2b",
@@ -45,7 +46,7 @@ export const getMemorialSettings = cache(async () => {
       select memorial_settings.display_name, memorial_settings.footer_text,
         memorial_settings.hero_image_url, tenants.template_id,
         memorial_settings.music_url, memorial_settings.music_autoplay,
-        memorial_settings.music_loop,
+        memorial_settings.music_loop, memorial_settings.music_volume,
         memorial_settings.background_color, memorial_settings.foreground_color,
         memorial_settings.paper_color, memorial_settings.sage_color,
         memorial_settings.accent_color, memorial_settings.line_color,
@@ -63,6 +64,7 @@ export const getMemorialSettings = cache(async () => {
       musicUrl: settings.music_url,
       musicAutoplay: settings.music_autoplay as MusicAutoplay,
       musicLoop: settings.music_loop,
+      musicVolume: settings.music_volume,
       colors: {
         background: settings.background_color,
         foreground: settings.foreground_color,

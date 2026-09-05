@@ -20,6 +20,7 @@ type MemorialSettings = {
   musicUrl: string;
   musicAutoplay: MusicAutoplay;
   musicLoop: boolean;
+  musicVolume: number;
   colors: Record<
     | "background"
     | "foreground"
@@ -56,6 +57,13 @@ const colorLabels: Array<[keyof MemorialSettings["colors"], string]> = [
 
 const ASSIGNABLE_ROLES: Role[] = ["admin", "editor", "moderator", "viewer"];
 
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export default function AdminDashboard({
   session,
   initialTributes,
@@ -76,13 +84,29 @@ export default function AdminDashboard({
   const [invitingBusy, setInvitingBusy] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  async function persistSettings(next: MemorialSettings) {
+    const response = await fetch("/api/admin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "settings", ...next }),
+    });
+    if (!response.ok) {
+      setError("Uploaded, but saving the site settings failed. Try Save appearance below.");
+      return false;
+    }
+    setSettings(next);
+    return true;
+  }
 
   async function uploadHeroImage(file: File | null) {
     if (!file) return;
     setUploadingHero(true);
     setError("");
+    setNotice("");
     const form = new FormData();
     form.set("file", file);
     const response = await fetch("/api/admin/upload-image", {
@@ -90,18 +114,24 @@ export default function AdminDashboard({
       body: form,
     });
     const result = await response.json().catch(() => null);
-    setUploadingHero(false);
     if (!response.ok) {
+      setUploadingHero(false);
       setError(result?.error || "Upload failed.");
       return;
     }
-    setSettings((current) => ({ ...current, heroImageUrl: result.data.url }));
+    const saved = await persistSettings({ ...settings, heroImageUrl: result.data.url });
+    setUploadingHero(false);
+    if (saved) {
+      setNotice("Hero image uploaded and saved.");
+      router.refresh();
+    }
   }
 
   async function uploadMusic(file: File | null) {
     if (!file) return;
     setUploadingMusic(true);
     setError("");
+    setNotice("");
     const form = new FormData();
     form.set("file", file);
     const response = await fetch("/api/admin/upload-audio", {
@@ -109,12 +139,17 @@ export default function AdminDashboard({
       body: form,
     });
     const result = await response.json().catch(() => null);
-    setUploadingMusic(false);
     if (!response.ok) {
+      setUploadingMusic(false);
       setError(result?.error || "Upload failed.");
       return;
     }
-    setSettings((current) => ({ ...current, musicUrl: result.data.url }));
+    const saved = await persistSettings({ ...settings, musicUrl: result.data.url });
+    setUploadingMusic(false);
+    if (saved) {
+      setNotice("Music track uploaded and saved.");
+      router.refresh();
+    }
   }
 
   async function signOut() {
@@ -126,6 +161,7 @@ export default function AdminDashboard({
     event.preventDefault();
     setSavingSettings(true);
     setError("");
+    setNotice("");
     const response = await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -136,6 +172,7 @@ export default function AdminDashboard({
       setError("Unable to save site settings.");
       return;
     }
+    setNotice("Site settings saved.");
     router.refresh();
   }
 
@@ -208,17 +245,19 @@ export default function AdminDashboard({
     event.preventDefault();
     setInvitingBusy(true);
     setError("");
+    setNotice("");
     const response = await fetch("/api/admin/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
     });
+    const result = await response.json().catch(() => null);
     setInvitingBusy(false);
     if (!response.ok) {
-      const result = await response.json().catch(() => null);
       setError(result?.error || "Unable to send that invite.");
       return;
     }
+    setNotice(result?.warning || `Invite email sent to ${inviteEmail}.`);
     setInviteEmail("");
     router.refresh();
   }
@@ -258,23 +297,47 @@ export default function AdminDashboard({
           Signed in as <strong>{session.displayName || session.email}</strong>{" "}
           ({session.role})
         </span>
-        <button
-          onClick={signOut}
-          className="rounded-full border border-[#b5a998] px-4 py-2 text-xs font-semibold text-[#1f2d2b]"
-        >
-          Sign out
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setAccountMenuOpen((open) => !open)}
+            aria-label="Account menu"
+            aria-expanded={accountMenuOpen}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1f2d2b] text-xs font-semibold text-[#fbf8f2]"
+          >
+            {getInitials(session.displayName || session.email)}
+          </button>
+          {accountMenuOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close account menu"
+                onClick={() => setAccountMenuOpen(false)}
+                className="fixed inset-0 z-20 cursor-default"
+              />
+              <div className="absolute right-0 top-12 z-30 w-56 rounded border border-[#d8cec0] bg-[#fbf8f2] py-1 shadow-lg">
+                <p className="truncate border-b border-[#d8cec0] px-4 py-2 text-xs text-[#536b60]">
+                  {session.displayName || session.email} · {session.role}
+                </p>
+                <a
+                  href="#site-settings"
+                  onClick={() => setAccountMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-[#1f2d2b] hover:bg-[#f0ece2]"
+                >
+                  Settings
+                </a>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  className="block w-full px-4 py-2 text-left text-sm text-[#1f2d2b] hover:bg-[#f0ece2]"
+                >
+                  Log out
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-      {error && (
-        <p className="border-l-2 border-[#b8786f] px-4 py-3 text-sm text-[#b8786f]">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="border-l-2 border-[#c48a3a] px-4 py-3 text-sm text-[#536b60]">
-          {notice}
-        </p>
-      )}
       {total === 0 && (
         <p className="border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm text-[#536b60]">
           Nothing is waiting for review.
@@ -285,19 +348,11 @@ export default function AdminDashboard({
         className="border border-[#d8cec0] bg-[#fbf8f2] p-4 sm:p-6"
         id="site-settings"
       >
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#d8cec0] pb-4">
-          <div>
-            <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
-              Site settings
-            </p>
-            <h2 className="display-font mt-2 text-4xl">Appearance</h2>
-          </div>
-          <button
-            disabled={savingSettings}
-            className="rounded-full bg-[#1f2d2b] px-5 py-3 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
-          >
-            {savingSettings ? "Saving..." : "Save appearance"}
-          </button>
+        <div className="border-b border-[#d8cec0] pb-4">
+          <p className="text-xs uppercase tracking-[.2em] text-[#536b60]">
+            Site settings
+          </p>
+          <h2 className="display-font mt-2 text-4xl">Appearance</h2>
         </div>
         <label className="mt-6 block text-sm font-semibold text-[#1f2d2b]">
           Website template
@@ -358,20 +413,8 @@ export default function AdminDashboard({
             they click or scroll rather than the instant the page loads.
             Visitors always get a visible play/pause control either way.
           </p>
-          <label className="mt-4 block text-sm font-semibold text-[#1f2d2b]">
-            Music URL
-            <input
-              type="url"
-              value={settings.musicUrl}
-              onChange={(event) =>
-                setSettings({ ...settings, musicUrl: event.target.value })
-              }
-              placeholder="Optional public audio URL"
-              className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none placeholder:text-[#8b9c8b]"
-            />
-          </label>
-          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
-            {uploadingMusic ? "Uploading..." : "Or upload a track"}
+          <label className="mt-4 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+            {uploadingMusic ? "Uploading..." : "Upload a track"}
             <input
               type="file"
               accept="audio/*"
@@ -406,6 +449,22 @@ export default function AdminDashboard({
                 }
               />
               Repeat when it ends
+            </label>
+            <label className="block text-sm font-semibold text-[#1f2d2b]">
+              Default volume ({settings.musicVolume}%)
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={settings.musicVolume}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    musicVolume: Number(event.target.value),
+                  })
+                }
+                className="mt-3 w-full accent-[#c48a3a]"
+              />
             </label>
           </div>
         </div>
@@ -681,6 +740,26 @@ export default function AdminDashboard({
           </div>
         </section>
       )}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+        {error && (
+          <p className="max-w-xs rounded border-l-2 border-[#b8786f] bg-[#fbf8f2] px-4 py-3 text-sm text-[#b8786f] shadow-lg">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="max-w-xs rounded border-l-2 border-[#c48a3a] bg-[#fbf8f2] px-4 py-3 text-sm text-[#536b60] shadow-lg">
+            {notice}
+          </p>
+        )}
+        <button
+          form="site-settings"
+          type="submit"
+          disabled={savingSettings}
+          className="rounded-full bg-[#1f2d2b] px-5 py-3 text-xs font-semibold text-[#fbf8f2] shadow-lg disabled:opacity-60"
+        >
+          {savingSettings ? "Saving..." : "Save appearance"}
+        </button>
+      </div>
     </div>
   );
 }
