@@ -210,6 +210,16 @@ alter table memorial_settings add column if not exists music_url text not null d
 alter table memorial_settings add column if not exists music_autoplay text not null default 'off';
 alter table memorial_settings add column if not exists music_loop boolean not null default true;
 
+alter table media_submissions add column if not exists display_order integer not null default 999999;
+
+update media_submissions m
+set display_order = ranked.rn
+from (
+  select id, row_number() over (partition by tenant_id order by created_at desc) as rn
+  from media_submissions
+) as ranked
+where m.id = ranked.id and m.display_order = 999999;
+
 create table if not exists content_blocks (
   tenant_id uuid not null references tenants(id) on delete cascade,
   block_key text not null,

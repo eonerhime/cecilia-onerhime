@@ -104,7 +104,7 @@ export async function getApprovedMediaList(limit = 200) {
       select id, media_url, media_type, caption
       from media_submissions
       where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
-      order by created_at desc
+      order by display_order asc, created_at desc
       limit ${limit}
     `;
     return media.map(({ media_url, media_type, ...item }) => ({
