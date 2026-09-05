@@ -6,6 +6,7 @@ import { hasRole, type Role } from "@/lib/roles";
 
 type EditModeContextValue = {
   loggedIn: boolean;
+  role: Role | null;
   canEdit: boolean;
   editMode: boolean;
   activeEditorId: string | null;
@@ -14,6 +15,7 @@ type EditModeContextValue = {
 
 const EditModeContext = createContext<EditModeContextValue>({
   loggedIn: false,
+  role: null,
   canEdit: false,
   editMode: false,
   activeEditorId: null,
@@ -50,6 +52,7 @@ export function EditModeProvider({ children }: { children: React.ReactNode }) {
     <EditModeContext.Provider
       value={{
         loggedIn: role !== null,
+        role,
         canEdit,
         editMode: canEdit && editMode,
         activeEditorId,
