@@ -5,20 +5,100 @@ import { useCallback, useEffect, useState } from "react";
 import { useEditMode } from "@/components/edit-mode";
 
 const AUTOPLAY_MS = 3000;
+// Hidden for now — duplicates browsing every album individually. Flip back
+// on if there's ever a need for an unfiltered "everything" view again.
+const SHOW_ALL_PHOTOS_COVER = false;
 
 type MediaItem = {
   id: string;
   mediaUrl: string;
   mediaType: "image" | "video";
   caption: string | null;
+  albumId: string | null;
 };
+
+type Album = {
+  id: string;
+  name: string;
+  coverUrl: string | null;
+};
+
+type Embed =
+  | { kind: "youtube" | "vimeo"; src: string }
+  | { kind: "file"; src: string };
+
+function getEmbed(url: string): Embed {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\.|^m\./, "");
+
+    if (host === "youtube.com") {
+      const id =
+        parsed.searchParams.get("v") ||
+        parsed.pathname.match(/\/(?:embed|shorts)\/([^/?]+)/)?.[1];
+      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host === "youtu.be") {
+      const id = parsed.pathname.slice(1);
+      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
+    }
+    if (host === "vimeo.com") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      if (id) return { kind: "vimeo", src: `https://player.vimeo.com/video/${id}` };
+    }
+    if (host === "player.vimeo.com") {
+      return { kind: "vimeo", src: url };
+    }
+  } catch {
+    // Not a parseable URL — fall through and try it as a direct file.
+  }
+  return { kind: "file", src: url };
+}
+
+function CoverTile({
+  label,
+  coverUrl,
+  fallback,
+  onClick,
+}: {
+  label: string;
+  coverUrl: string | null | undefined;
+  fallback: MediaItem | undefined;
+  onClick: () => void;
+}) {
+  const imageUrl = coverUrl || (fallback?.mediaType === "image" ? fallback.mediaUrl : null);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group relative aspect-square overflow-hidden bg-[#536b60] text-left"
+    >
+      {imageUrl && (
+        <Image
+          src={imageUrl}
+          alt={label}
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+        />
+      )}
+      <div className="absolute inset-0 flex items-end bg-gradient-to-t from-[#1f2d2b]/85 via-transparent to-transparent p-5">
+        <span className="display-font text-3xl text-[#fbf8f2]">{label}</span>
+      </div>
+    </button>
+  );
+}
 
 export default function GalleryGrid({
   media,
+  albums,
   displayName,
+  shareSlot,
 }: {
   media: MediaItem[];
+  albums: Album[];
   displayName: string;
+  shareSlot?: React.ReactNode;
 }) {
   const { canEdit, editMode } = useEditMode();
   const reorderable = canEdit && editMode;
@@ -30,11 +110,36 @@ export default function GalleryGrid({
     setOrderedMedia(media);
   }
 
+  const [albumList, setAlbumList] = useState(albums);
+  const [prevAlbums, setPrevAlbums] = useState(albums);
+  if (albums !== prevAlbums) {
+    setPrevAlbums(albums);
+    setAlbumList(albums);
+  }
+
+  const hasVideos = orderedMedia.some((item) => item.mediaType === "video");
+  const [mediaTab, setMediaTab] = useState<"photos" | "videos">("photos");
+
+  const [view, setView] = useState<"covers" | "all" | string>(
+    albumList.length > 0 ? "covers" : "all",
+  );
+
+  const photoMedia = orderedMedia.filter((item) => item.mediaType === "image");
+  const videoMedia = orderedMedia.filter((item) => item.mediaType === "video");
+
+  const visiblePhotos =
+    view === "covers"
+      ? []
+      : view === "all"
+        ? photoMedia
+        : photoMedia.filter((item) => item.albumId === view);
+
   const [dragId, setDragId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
 
-  const images = orderedMedia.filter((item) => item.mediaType === "image");
+  const images = visiblePhotos;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [activeVideo, setActiveVideo] = useState<MediaItem | null>(null);
 
   const close = useCallback(() => setActiveIndex(null), []);
   const showNext = useCallback(() => {
@@ -57,24 +162,29 @@ export default function GalleryGrid({
   }, [activeIndex, images.length, showNext]);
 
   useEffect(() => {
-    if (activeIndex === null) return;
+    if (activeIndex === null && !activeVideo) return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") close();
-      if (event.key === "ArrowRight") showNext();
-      if (event.key === "ArrowLeft") showPrev();
+      if (event.key === "Escape") {
+        close();
+        setActiveVideo(null);
+      }
+      if (activeIndex !== null) {
+        if (event.key === "ArrowRight") showNext();
+        if (event.key === "ArrowLeft") showPrev();
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, close, showNext, showPrev]);
+  }, [activeIndex, activeVideo, close, showNext, showPrev]);
 
   useEffect(() => {
-    if (activeIndex === null) return;
+    if (activeIndex === null && !activeVideo) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [activeIndex]);
+  }, [activeIndex, activeVideo]);
 
   async function persistOrder(next: MediaItem[]) {
     setSavingOrder(true);
@@ -89,101 +199,265 @@ export default function GalleryGrid({
     }
   }
 
-  function handleDrop(targetId: string) {
+  function handleDrop(list: MediaItem[], targetId: string) {
     if (!dragId || dragId === targetId) {
       setDragId(null);
       return;
     }
+    const fromIndex = list.findIndex((item) => item.id === dragId);
+    const toIndex = list.findIndex((item) => item.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDragId(null);
+      return;
+    }
+    const reordered = [...list];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // `list` is a same-order subset of `current` — walk `current` and drop
+    // the reordered items back into the exact slots the subset occupied.
+    const listIds = new Set(list.map((item) => item.id));
     setOrderedMedia((current) => {
-      const next = [...current];
-      const fromIndex = next.findIndex((item) => item.id === dragId);
-      const toIndex = next.findIndex((item) => item.id === targetId);
-      if (fromIndex === -1 || toIndex === -1) return current;
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      persistOrder(next);
-      return next;
+      let cursor = 0;
+      return current.map((item) => (listIds.has(item.id) ? reordered[cursor++] : item));
     });
+    persistOrder(reordered);
     setDragId(null);
   }
 
+  async function assignAlbum(mediaId: string, albumId: string) {
+    setOrderedMedia((current) =>
+      current.map((item) =>
+        item.id === mediaId ? { ...item, albumId: albumId || null } : item,
+      ),
+    );
+    await fetch("/api/admin/media-album", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaId, albumId: albumId || undefined }),
+    });
+  }
+
+  async function setAsCover(albumId: string, coverUrl: string) {
+    setAlbumList((current) =>
+      current.map((album) => (album.id === albumId ? { ...album, coverUrl } : album)),
+    );
+    await fetch("/api/admin/albums", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: albumId, coverUrl }),
+    });
+  }
+
   const active = activeIndex !== null ? images[activeIndex] : null;
+  const activeEmbed = activeVideo ? getEmbed(activeVideo.mediaUrl) : null;
+  const currentAlbumName =
+    view !== "covers" && view !== "all"
+      ? albumList.find((album) => album.id === view)?.name
+      : null;
+
+  function renderTile(item: MediaItem, list: MediaItem[], showCoverAction: boolean) {
+    return (
+      <div key={item.id} className="relative">
+        {item.mediaType === "image" ? (
+          <button
+            type="button"
+            draggable={reorderable}
+            onDragStart={() => setDragId(item.id)}
+            onDragOver={(event) => {
+              if (reorderable) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleDrop(list, item.id);
+            }}
+            onDragEnd={() => setDragId(null)}
+            onClick={() => {
+              if (dragId) return;
+              setActiveIndex(images.findIndex((image) => image.id === item.id));
+            }}
+            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left ${
+              reorderable ? "cursor-grab active:cursor-grabbing" : ""
+            } ${dragId === item.id ? "opacity-40" : ""}`}
+          >
+            <Image
+              src={item.mediaUrl}
+              alt={item.caption || `A memory of ${displayName}`}
+              fill
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+            />
+            {item.caption && (
+              <p className="absolute inset-x-0 bottom-0 bg-[#1f2d2b]/80 px-4 py-3 text-xs text-[#fbf8f2]">
+                {item.caption}
+              </p>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            draggable={reorderable}
+            onDragStart={() => setDragId(item.id)}
+            onDragOver={(event) => {
+              if (reorderable) event.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleDrop(list, item.id);
+            }}
+            onDragEnd={() => setDragId(null)}
+            onClick={() => {
+              if (dragId) return;
+              setActiveVideo(item);
+            }}
+            className={`group relative flex aspect-square w-full flex-col items-center justify-center gap-2 bg-[#536b60] p-6 text-center text-[#fbf8f2] hover:bg-[#1f2d2b] ${
+              reorderable ? "cursor-grab active:cursor-grabbing" : ""
+            } ${dragId === item.id ? "opacity-40" : ""}`}
+          >
+            <span className="display-font text-3xl">▶ Video memory</span>
+            {item.caption && (
+              <span className="text-xs text-[#d9e0d9]">{item.caption}</span>
+            )}
+          </button>
+        )}
+        {reorderable && albumList.length > 0 && (
+          <select
+            value={item.albumId ?? ""}
+            onChange={(event) => assignAlbum(item.id, event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            className="absolute left-2 top-2 z-10 rounded border-0 bg-[#fbf8f2] px-2 py-1 text-xs text-[#1f2d2b] shadow"
+          >
+            <option value="">No album</option>
+            {albumList.map((album) => (
+              <option key={album.id} value={album.id}>
+                {album.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {reorderable && showCoverAction && item.mediaType === "image" && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setAsCover(view, item.mediaUrl);
+            }}
+            className="absolute right-2 top-2 z-10 rounded bg-[#fbf8f2] px-2 py-1 text-xs text-[#1f2d2b] shadow"
+          >
+            Set as cover
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <>
-      {reorderable && (
-        <p className="mt-8 text-xs uppercase tracking-[.14em] text-[#536b60]">
-          Drag photos to reorder{savingOrder ? " · Saving…" : ""}
-        </p>
+      {(shareSlot || hasVideos) && (
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+          {hasVideos && (
+            <div className="inline-flex h-10 items-center rounded-full border border-[#b5a998] p-1">
+              <button
+                type="button"
+                onClick={() => setMediaTab("photos")}
+                className={`flex h-full items-center rounded-full px-5 text-xs font-semibold uppercase tracking-widest ${
+                  mediaTab === "photos" ? "bg-[#1f2d2b] text-[#fbf8f2]" : "text-[#1f2d2b]"
+                }`}
+              >
+                Photos
+              </button>
+              <button
+                type="button"
+                onClick={() => setMediaTab("videos")}
+                className={`flex h-full items-center rounded-full px-5 text-xs font-semibold uppercase tracking-widest ${
+                  mediaTab === "videos" ? "bg-[#1f2d2b] text-[#fbf8f2]" : "text-[#1f2d2b]"
+                }`}
+              >
+                Videos
+              </button>
+            </div>
+          )}
+          {shareSlot}
+        </div>
       )}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {orderedMedia.map((item) =>
-          item.mediaType === "image" ? (
-            <button
-              key={item.id}
-              type="button"
-              draggable={reorderable}
-              onDragStart={() => setDragId(item.id)}
-              onDragOver={(event) => {
-                if (reorderable) event.preventDefault();
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                handleDrop(item.id);
-              }}
-              onDragEnd={() => setDragId(null)}
-              onClick={() => {
-                if (dragId) return;
-                setActiveIndex(images.findIndex((image) => image.id === item.id));
-              }}
-              className={`group relative aspect-square overflow-hidden bg-[#536b60] text-left ${
-                reorderable ? "cursor-grab active:cursor-grabbing" : ""
-              } ${dragId === item.id ? "opacity-40" : ""}`}
-            >
-              <Image
-                src={item.mediaUrl}
-                alt={item.caption || `A memory of ${displayName}`}
-                fill
-                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
-              />
-              {item.caption && (
-                <p className="absolute inset-x-0 bottom-0 bg-[#1f2d2b]/80 px-4 py-3 text-xs text-[#fbf8f2]">
-                  {item.caption}
+
+      {mediaTab === "photos" && view === "covers" && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SHOW_ALL_PHOTOS_COVER && (
+            <CoverTile
+              label="All photos"
+              coverUrl={null}
+              fallback={photoMedia[0]}
+              onClick={() => setView("all")}
+            />
+          )}
+          {albumList.map((album) => (
+            <CoverTile
+              key={album.id}
+              label={album.name}
+              coverUrl={album.coverUrl}
+              fallback={photoMedia.find((item) => item.albumId === album.id)}
+              onClick={() => setView(album.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {mediaTab === "photos" && view !== "covers" && (
+        <>
+          {(albumList.length > 0 || reorderable) && (
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+              {albumList.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setView("covers")}
+                  className="text-sm text-[#536b60] hover:text-[#c48a3a]"
+                >
+                  ← All albums
+                </button>
+              ) : (
+                <span />
+              )}
+              {reorderable && (
+                <p className="text-xs uppercase tracking-[.14em] text-[#536b60]">
+                  Drag photos to reorder{savingOrder ? " · Saving…" : ""}
                 </p>
               )}
-            </button>
-          ) : (
-            <a
-              key={item.id}
-              href={reorderable ? undefined : item.mediaUrl}
-              target={reorderable ? undefined : "_blank"}
-              rel={reorderable ? undefined : "noreferrer"}
-              draggable={reorderable}
-              onDragStart={() => setDragId(item.id)}
-              onDragOver={(event) => {
-                if (reorderable) event.preventDefault();
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                handleDrop(item.id);
-              }}
-              onDragEnd={() => setDragId(null)}
-              onClick={(event) => {
-                if (reorderable) event.preventDefault();
-              }}
-              className={`flex aspect-square flex-col items-center justify-center gap-2 bg-[#536b60] p-6 text-center text-[#fbf8f2] hover:bg-[#1f2d2b] ${
-                reorderable ? "cursor-grab active:cursor-grabbing" : ""
-              } ${dragId === item.id ? "opacity-40" : ""}`}
-            >
-              <span className="display-font text-3xl">Video memory ↗</span>
-              {item.caption && (
-                <span className="text-xs text-[#d9e0d9]">{item.caption}</span>
-              )}
-            </a>
-          ),
-        )}
-      </div>
+            </div>
+          )}
+          {currentAlbumName && (
+            <h2 className="display-font mt-3 text-4xl">{currentAlbumName}</h2>
+          )}
+          {visiblePhotos.length === 0 && (
+            <p className="mt-4 border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm leading-6 text-[#536b60]">
+              Nothing has been added to this album yet.
+            </p>
+          )}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visiblePhotos.map((item) =>
+              renderTile(item, visiblePhotos, view !== "all" && view !== "covers"),
+            )}
+          </div>
+        </>
+      )}
+
+      {mediaTab === "videos" && (
+        <>
+          {reorderable && (
+            <p className="mt-8 text-xs uppercase tracking-[.14em] text-[#536b60]">
+              Drag videos to reorder{savingOrder ? " · Saving…" : ""}
+            </p>
+          )}
+          {videoMedia.length === 0 && (
+            <p className="mt-4 border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm leading-6 text-[#536b60]">
+              No videos have been shared yet.
+            </p>
+          )}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {videoMedia.map((item) => renderTile(item, videoMedia, false))}
+          </div>
+        </>
+      )}
 
       {active && (
         <div
@@ -250,6 +524,56 @@ export default function GalleryGrid({
               onClick={(event) => event.stopPropagation()}
             >
               {active.caption}
+            </p>
+          )}
+        </div>
+      )}
+
+      {activeVideo && activeEmbed && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-[#1f2d2b]/95 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={activeVideo.caption || `A video memory of ${displayName}`}
+          onClick={() => setActiveVideo(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveVideo(null)}
+            aria-label="Close"
+            className="absolute right-5 top-5 text-3xl text-[#fbf8f2] hover:text-[#c48a3a]"
+          >
+            ×
+          </button>
+
+          <div
+            className="aspect-video w-[90vw] max-w-4xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {activeEmbed.kind === "file" ? (
+              <video
+                src={activeEmbed.src}
+                controls
+                autoPlay
+                className="h-full w-full bg-black"
+              />
+            ) : (
+              <iframe
+                src={activeEmbed.src}
+                title={activeVideo.caption || "Video memory"}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                className="h-full w-full border-0 bg-black"
+              />
+            )}
+          </div>
+
+          {activeVideo.caption && (
+            <p
+              className="absolute bottom-6 left-1/2 max-w-lg -translate-x-1/2 px-4 text-center text-sm text-[#fbf8f2]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {activeVideo.caption}
             </p>
           )}
         </div>

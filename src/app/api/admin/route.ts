@@ -10,11 +10,11 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const minRole =
-      body.type === "settings" ? "admin" : body.type === "media" ? "editor" : "moderator";
+      body.type === "settings" ? "admin" : body.type === "field" ? "editor" : "moderator";
     const { session, denied } = await requireSession(minRole);
     if (denied) return denied;
 
-    if (body.type === "media") {
+    if (body.type === "field") {
       const field = body.field;
       const value = typeof body.value === "string" ? body.value.trim() : "";
       if (

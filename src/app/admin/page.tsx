@@ -2,7 +2,7 @@ import Link from "next/link";
 import AdminDashboard from "./admin-dashboard";
 import AuthForm from "./auth-form";
 import { getSession } from "@/lib/session";
-import { getMemorialSettings } from "@/lib/memorial";
+import { getAlbums, getMemorialSettings } from "@/lib/memorial";
 import {
   getContactInquiries,
   getPendingInvites,
@@ -41,6 +41,7 @@ export default async function AdminPage({
         getMemorialSettings(),
         getTenantMembers(session.tenantId),
         getPendingInvites(session.tenantId),
+        getAlbums(),
       ])
     : null;
 
@@ -69,6 +70,7 @@ export default async function AdminPage({
             initialSettings={data[3]}
             initialMembers={data[4]}
             initialInvites={data[5]}
+            initialAlbums={data[6]}
           />
         ) : (
           <div className="mt-12 max-w-md border border-[#d8cec0] bg-[#fbf8f2] p-8">

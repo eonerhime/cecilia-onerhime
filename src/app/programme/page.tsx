@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { getMemorialSettings } from "@/lib/memorial";
+import SiteNav from "@/components/site-nav";
 
 const events = [
   [
@@ -18,13 +19,13 @@ const events = [
   ],
 ];
 
-export default function Programme() {
+export default async function Programme() {
+  const settings = await getMemorialSettings();
+
   return (
-    <main className="paper-grain min-h-screen px-6 py-10 lg:px-10">
-      <Link href="/" className="text-sm text-[#536b60]">
-        ← Back home
-      </Link>
-      <section className="mx-auto max-w-5xl py-20">
+    <main className="paper-grain min-h-screen">
+      <SiteNav displayName={settings.displayName} current="programme" />
+      <section className="mx-auto max-w-5xl px-6 py-20 lg:px-10">
         <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
           The farewell
         </p>

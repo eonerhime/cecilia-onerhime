@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { getMemorialSettings } from "@/lib/memorial";
 import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditableSetting } from "@/components/editable";
+import SiteNav from "@/components/site-nav";
 
 export default async function Profile() {
   const [settings, blocks] = await Promise.all([
@@ -25,11 +25,9 @@ export default async function Profile() {
   );
 
   return (
-    <main className="paper-grain min-h-screen px-6 py-10 lg:px-10">
-      <Link href="/" className="text-sm text-[#536b60]">
-        ← Back home
-      </Link>
-      <section className="mx-auto max-w-4xl py-20">
+    <main className="paper-grain min-h-screen">
+      <SiteNav displayName={settings.displayName} current="profile" />
+      <section className="mx-auto max-w-4xl px-6 py-20 lg:px-10">
         <Editable
           blockKey="profile.eyebrow"
           value={block(blocks, "profile.eyebrow", "Her story")}

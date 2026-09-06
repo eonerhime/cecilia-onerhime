@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Role, Session } from "@/lib/session";
 import { ROLE_DESCRIPTIONS, hasRole } from "@/lib/roles";
-import type { MusicAutoplay } from "@/lib/memorial";
+import type { Album, MusicAutoplay } from "@/lib/memorial";
 import type {
   ContactInquiry,
   PendingInvite,
@@ -43,6 +43,7 @@ type Props = {
   initialSettings: MemorialSettings;
   initialMembers: TenantMember[];
   initialInvites: PendingInvite[];
+  initialAlbums: Album[];
 };
 
 const colorLabels: Array<[keyof MemorialSettings["colors"], string]> = [
@@ -73,6 +74,7 @@ export default function AdminDashboard({
   initialSettings,
   initialMembers,
   initialInvites,
+  initialAlbums,
 }: Props) {
   const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
@@ -85,6 +87,13 @@ export default function AdminDashboard({
   const [invitingBusy, setInvitingBusy] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoCaption, setVideoCaption] = useState("");
+  const [addingVideo, setAddingVideo] = useState(false);
+  const [albums, setAlbums] = useState(initialAlbums);
+  const [selectedAlbumId, setSelectedAlbumId] = useState("");
+  const [newAlbumName, setNewAlbumName] = useState("");
+  const [albumBusy, setAlbumBusy] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -93,7 +102,7 @@ export default function AdminDashboard({
     const response = await fetch("/api/admin", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "media", field, value }),
+      body: JSON.stringify({ type: "field", field, value }),
     });
     if (!response.ok) {
       setError("Uploaded, but saving it failed. Please try again.");
@@ -213,7 +222,7 @@ export default function AdminDashboard({
       return;
     }
     setNotice(
-      `${result.data.imported} ${type === "tributes" ? "tributes" : "images"} imported and waiting for review.`,
+      `${result.data.imported} tributes imported and waiting for review.`,
     );
     router.refresh();
   }
@@ -225,6 +234,7 @@ export default function AdminDashboard({
     setNotice("");
     const form = new FormData();
     form.set("type", "images");
+    if (selectedAlbumId) form.set("albumId", selectedAlbumId);
     Array.from(files).forEach((file) => form.append("files", file));
     const response = await fetch("/api/admin/import", {
       method: "POST",
@@ -237,8 +247,107 @@ export default function AdminDashboard({
       return;
     }
     setNotice(
-      `${result.data.imported} images imported and waiting for review.`,
+      `${result.data.imported} images added to the gallery.`,
     );
+    router.refresh();
+  }
+
+  async function addVideo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAddingVideo(true);
+    setError("");
+    setNotice("");
+    const response = await fetch("/api/admin/video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mediaUrl: videoUrl,
+        caption: videoCaption,
+        albumId: selectedAlbumId || undefined,
+      }),
+    });
+    const result = await response.json().catch(() => null);
+    setAddingVideo(false);
+    if (!response.ok) {
+      setError(result?.error || "Unable to add that video.");
+      return;
+    }
+    setNotice("Video added to the gallery.");
+    setVideoUrl("");
+    setVideoCaption("");
+    router.refresh();
+  }
+
+  async function createAlbum(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAlbumBusy(true);
+    setError("");
+    setNotice("");
+    const form = new FormData(event.currentTarget);
+    const response = await fetch("/api/admin/albums", {
+      method: "POST",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    setAlbumBusy(false);
+    if (!response.ok) {
+      setError(result?.error || "Unable to create that album.");
+      return;
+    }
+    setAlbums((current) => [...current, result.data]);
+    setNewAlbumName("");
+    event.currentTarget.reset();
+    setNotice("Album created.");
+  }
+
+  async function updateAlbumCover(albumId: string, file: File | null) {
+    if (!file) return;
+    setError("");
+    setNotice("");
+    const form = new FormData();
+    form.set("id", albumId);
+    form.set("cover", file);
+    const response = await fetch("/api/admin/albums", {
+      method: "PATCH",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) {
+      setError(result?.error || "Unable to update that album's cover.");
+      return;
+    }
+    setAlbums((current) =>
+      current.map((album) =>
+        album.id === albumId ? { ...album, coverUrl: result.data.coverUrl } : album,
+      ),
+    );
+    setNotice("Album cover updated.");
+  }
+
+  async function removeAlbum(id: string) {
+    const response = await fetch("/api/admin/albums", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (!response.ok) {
+      setError("Unable to remove that album.");
+      return;
+    }
+    setAlbums((current) => current.filter((album) => album.id !== id));
+    router.refresh();
+  }
+
+  async function assignMediaAlbum(mediaId: string, albumId: string) {
+    const response = await fetch("/api/admin/media-album", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaId, albumId: albumId || undefined }),
+    });
+    if (!response.ok) {
+      setError("Unable to update that item's album.");
+      return;
+    }
     router.refresh();
   }
 
@@ -567,12 +676,99 @@ export default function AdminDashboard({
           </p>
           <h2 className="display-font mt-2 text-4xl">Bring memories in bulk</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#536b60]">
-            Imports stay pending until you approve them. Tribute CSVs need two
-            columns: <strong>name</strong> and <strong>tribute</strong>. Keep
-            one person and one message per row.
+            Tribute CSVs stay pending until you approve them and need two
+            columns: <strong>name</strong> and <strong>tribute</strong> (one
+            person and one message per row). Gallery images and video links
+            you add here go straight into the gallery.
           </p>
         </div>
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
+
+        <div className="mt-6 border-t border-[#d8cec0] pt-6">
+          <h3 className="display-font text-3xl">Albums</h3>
+          <p className="mt-2 text-sm leading-6 text-[#536b60]">
+            Group gallery photos and videos into albums — e.g. Family
+            pictures, Service of Songs, Burial, Thanksgiving.
+          </p>
+          <form onSubmit={createAlbum} className="mt-4 flex flex-wrap items-center gap-3">
+            <input
+              required
+              name="name"
+              maxLength={100}
+              value={newAlbumName}
+              onChange={(event) => setNewAlbumName(event.target.value)}
+              placeholder="New album name"
+              className="flex-1 border-b border-[#b5a998] bg-transparent px-0 py-2 text-sm font-normal outline-none placeholder:text-[#8b9c8b]"
+            />
+            <label className="flex cursor-pointer items-center gap-1 rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+              Cover (optional)
+              <input type="file" name="cover" accept="image/*" className="sr-only" />
+            </label>
+            <button
+              disabled={albumBusy}
+              className="rounded-full bg-[#1f2d2b] px-5 py-2 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
+            >
+              {albumBusy ? "Creating..." : "Create album"}
+            </button>
+          </form>
+          {albums.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {albums.map((album) => (
+                <span
+                  key={album.id}
+                  className="flex items-center gap-2 rounded-full border border-[#b5a998] px-3 py-1.5 text-xs text-[#1f2d2b]"
+                >
+                  {album.coverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={album.coverUrl}
+                      alt=""
+                      className="h-5 w-5 rounded-full object-cover"
+                    />
+                  )}
+                  {album.name}
+                  <label className="cursor-pointer text-[#536b60] hover:text-[#1f2d2b]">
+                    ⤴
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) =>
+                        updateAlbumCover(album.id, event.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeAlbum(album.id)}
+                    aria-label={`Remove ${album.name}`}
+                    className="text-[#b8786f] hover:text-[#8a5951]"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {albums.length > 0 && (
+            <label className="mt-5 block text-sm font-semibold text-[#1f2d2b]">
+              Add new imports below to
+              <select
+                value={selectedAlbumId}
+                onChange={(event) => setSelectedAlbumId(event.target.value)}
+                className="mt-2 w-full border-b border-[#b5a998] bg-transparent px-0 py-3 font-normal outline-none"
+              >
+                <option value="">No album</option>
+                {albums.map((album) => (
+                  <option key={album.id} value={album.id}>
+                    {album.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+
+        <div className="mt-6 grid gap-5 md:grid-cols-3">
           <div className="border-t-2 border-[#c48a3a] pt-4">
             <h3 className="display-font text-3xl">Tributes CSV</h3>
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
@@ -603,8 +799,8 @@ export default function AdminDashboard({
           <div className="border-t-2 border-[#c48a3a] pt-4">
             <h3 className="display-font text-3xl">Gallery images</h3>
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
-              Select up to 30 images, 10 MB each. They are stored in Vercel
-              Blob and enter moderation as pending.
+              Select up to 30 images, 10 MB each. They&apos;re stored in
+              Vercel Blob and published to the gallery immediately.
             </p>
             <label className="mt-5 flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
               {importing === "images" ? "Uploading..." : "Choose images"}
@@ -616,6 +812,37 @@ export default function AdminDashboard({
                 onChange={(event) => importImages(event.target.files)}
               />
             </label>
+          </div>
+          <div className="border-t-2 border-[#c48a3a] pt-4">
+            <h3 className="display-font text-3xl">Video link</h3>
+            <p className="mt-2 text-sm leading-6 text-[#536b60]">
+              A YouTube, Vimeo, or direct video file link — it&apos;ll play
+              in an embedded player, published to the gallery immediately.
+            </p>
+            <form onSubmit={addVideo} className="mt-5 space-y-2">
+              <input
+                required
+                type="url"
+                value={videoUrl}
+                onChange={(event) => setVideoUrl(event.target.value)}
+                placeholder="https://example.com/video.mp4"
+                className="w-full border-b border-[#b5a998] bg-transparent px-0 py-2 text-sm font-normal outline-none placeholder:text-[#8b9c8b]"
+              />
+              <input
+                type="text"
+                value={videoCaption}
+                onChange={(event) => setVideoCaption(event.target.value)}
+                placeholder="Optional caption"
+                maxLength={300}
+                className="w-full border-b border-[#b5a998] bg-transparent px-0 py-2 text-sm font-normal outline-none placeholder:text-[#8b9c8b]"
+              />
+              <button
+                disabled={addingVideo}
+                className="w-full rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2] disabled:opacity-60"
+              >
+                {addingVideo ? "Adding..." : "Add video"}
+              </button>
+            </form>
           </div>
         </div>
       </section>
@@ -659,6 +886,23 @@ export default function AdminDashboard({
             </a>
             {item.caption && (
               <p className="mt-4 text-sm leading-6">{item.caption}</p>
+            )}
+            {albums.length > 0 && (
+              <label className="mt-4 block text-xs font-semibold uppercase tracking-[.14em] text-[#536b60]">
+                Album
+                <select
+                  value={item.albumId ?? ""}
+                  onChange={(event) => assignMediaAlbum(item.id, event.target.value)}
+                  className="mt-1 w-full border-b border-[#b5a998] bg-transparent px-0 py-2 text-sm font-normal normal-case tracking-normal text-[#1f2d2b] outline-none"
+                >
+                  <option value="">No album</option>
+                  {albums.map((album) => (
+                    <option key={album.id} value={album.id}>
+                      {album.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
           </ReviewCard>
         ))}

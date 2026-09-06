@@ -229,3 +229,19 @@ create table if not exists content_blocks (
 );
 
 alter table memorial_settings add column if not exists music_volume smallint not null default 80 check (music_volume between 0 and 100);
+
+create table if not exists albums (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  name text not null,
+  cover_url text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table albums add column if not exists cover_url text;
+
+create index if not exists albums_tenant_idx on albums (tenant_id, sort_order);
+
+alter table media_submissions add column if not exists album_id uuid references albums(id) on delete set null;
+create index if not exists media_submissions_album_idx on media_submissions (album_id);

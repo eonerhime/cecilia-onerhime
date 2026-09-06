@@ -49,6 +49,20 @@ export async function GET(request: Request) {
     const [existingUser] = await sql`
       select id, terms_accepted_at from users where email = ${email}
     `;
+
+    // Check invite/membership status before ever creating a `users` row —
+    // an account with no relationship to any tenant shouldn't be stored
+    // just because someone tried (and failed) to sign in.
+    const role = await peekRoleForLogin(
+      DEFAULT_TENANT_ID,
+      existingUser?.id ?? null,
+      email,
+    );
+    if (!role) {
+      await recordFailure(clientKey);
+      return NextResponse.redirect(new URL("/admin?error=not_invited", url));
+    }
+
     let userId = existingUser?.id as string | undefined;
     let termsAcceptedAt = existingUser?.terms_accepted_at ?? null;
     if (!userId) {
@@ -60,12 +74,6 @@ export async function GET(request: Request) {
       `;
       userId = created.id as string;
       termsAcceptedAt = created.terms_accepted_at ?? null;
-    }
-
-    const role = await peekRoleForLogin(DEFAULT_TENANT_ID, userId, email);
-    if (!role) {
-      await recordFailure(clientKey);
-      return NextResponse.redirect(new URL("/admin?error=not_invited", url));
     }
 
     if (!termsAcceptedAt) {
