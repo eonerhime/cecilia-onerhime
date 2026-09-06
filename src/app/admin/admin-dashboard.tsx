@@ -223,9 +223,16 @@ export default function AdminDashboard({
       setError(result.error || "Bulk import failed.");
       return;
     }
-    setNotice(
-      `${result.data.imported} tributes imported and waiting for review.`,
-    );
+    const parts = [`${result.data.imported} tributes imported and waiting for review.`];
+    if (result.data.duplicates?.length) {
+      parts.push(`Skipped ${result.data.duplicates.length} exact duplicate(s): ${result.data.duplicates.join(", ")}.`);
+    }
+    if (result.data.flagged?.length) {
+      parts.push(
+        `${result.data.flagged.length} imported row(s) share a name with an existing tribute — please review: ${result.data.flagged.join(", ")}.`,
+      );
+    }
+    setNotice(parts.join(" "));
     router.refresh();
   }
 

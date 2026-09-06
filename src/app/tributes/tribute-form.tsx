@@ -6,6 +6,7 @@ export default function TributeForm() {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -19,8 +20,18 @@ export default function TributeForm() {
         message: form.get("message"),
       }),
     });
-    setState(response.ok ? "sent" : "error");
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      setState("sent");
+      event.currentTarget.reset();
+    } else {
+      const body = await response.json().catch(() => null);
+      setErrorMessage(
+        typeof body?.error === "string"
+          ? body.error
+          : "Something went wrong. Please try again.",
+      );
+      setState("error");
+    }
   }
 
   if (state === "sent")
@@ -53,9 +64,7 @@ export default function TributeForm() {
         {state === "sending" ? "Sending..." : "Send tribute"}
       </button>
       {state === "error" && (
-        <p className="text-sm text-[#b8786f]">
-          Something went wrong. Please try again.
-        </p>
+        <p className="text-sm text-[#b8786f]">{errorMessage}</p>
       )}
     </form>
   );

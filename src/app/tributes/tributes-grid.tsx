@@ -62,6 +62,17 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
     router.refresh();
   }
 
+  async function deleteTribute(id: string) {
+    if (!window.confirm("Delete this tribute? This can't be undone.")) return;
+    setTributesState((current) => current.filter((tribute) => tribute.id !== id));
+    setActive((current) => (current?.id === id ? null : current));
+    await fetch("/api/admin/tribute", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  }
+
   async function persistOrder(next: ApprovedTribute[]) {
     setSavingOrder(true);
     try {
@@ -125,39 +136,55 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
         }`}
       >
         {tributesState.map((tribute) => (
-          <button
-            key={tribute.id}
-            type="button"
-            draggable={reorderable}
-            onDragStart={() => setDragId(tribute.id)}
-            onDragOver={(event: DragEvent<HTMLButtonElement>) => {
-              if (reorderable) event.preventDefault();
-            }}
-            onDrop={(event: DragEvent<HTMLButtonElement>) => {
-              event.preventDefault();
-              handleDrop(tribute.id);
-            }}
-            onDragEnd={() => setDragId(null)}
-            onClick={() => {
-              if (dragId) return;
-              open(tribute);
-            }}
-            className={`group relative flex aspect-square flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-transform hover:-translate-y-1 hover:border-[#c48a3a] ${
-              reorderable ? "cursor-grab active:cursor-grabbing" : ""
-            } ${dragId === tribute.id ? "opacity-40" : ""}`}
-          >
+          <div key={tribute.id} className="relative">
+            <button
+              type="button"
+              draggable={reorderable}
+              onDragStart={() => setDragId(tribute.id)}
+              onDragOver={(event: DragEvent<HTMLButtonElement>) => {
+                if (reorderable) event.preventDefault();
+              }}
+              onDrop={(event: DragEvent<HTMLButtonElement>) => {
+                event.preventDefault();
+                handleDrop(tribute.id);
+              }}
+              onDragEnd={() => setDragId(null)}
+              onClick={() => {
+                if (dragId) return;
+                open(tribute);
+              }}
+              className={`group flex aspect-square w-full flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-transform hover:-translate-y-1 hover:border-[#c48a3a] ${
+                reorderable ? "cursor-grab active:cursor-grabbing" : ""
+              } ${dragId === tribute.id ? "opacity-40" : ""}`}
+            >
+              {reorderable && (
+                <span className="absolute right-3 top-3 flex rounded-full bg-[#c48a3a] p-1.5 text-[#1f2d2b]">
+                  <PencilIcon />
+                </span>
+              )}
+              <p className="display-font line-clamp-6 text-2xl leading-tight">
+                “{tribute.message}”
+              </p>
+              <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
+                {tribute.name}
+              </cite>
+            </button>
             {reorderable && (
-              <span className="absolute right-3 top-3 flex rounded-full bg-[#c48a3a] p-1.5 text-[#1f2d2b]">
-                <PencilIcon />
-              </span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  deleteTribute(tribute.id);
+                }}
+                aria-label="Delete tribute"
+                className="absolute bottom-3 right-3 z-10 rounded-full bg-[#fbf8f2] p-1.5 text-[#b8786f] shadow hover:bg-[#b8786f] hover:text-[#fbf8f2]"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path d="M8 2a1 1 0 0 0-1 1v1H4a1 1 0 1 0 0 2h.1l.9 10.1A2 2 0 0 0 6.99 18h6.02a2 2 0 0 0 1.99-1.9L15.9 6h.1a1 1 0 1 0 0-2h-3V3a1 1 0 0 0-1-1H8Zm0 2h4V3H8v1ZM7 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8Zm4 0a1 1 0 1 1 2 0v6a1 1 0 1 1-2 0V8Z" />
+                </svg>
+              </button>
             )}
-            <p className="display-font line-clamp-6 text-2xl leading-tight">
-              “{tribute.message}”
-            </p>
-            <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
-              {tribute.name}
-            </cite>
-          </button>
+          </div>
         ))}
       </div>
 

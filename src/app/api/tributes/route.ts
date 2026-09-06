@@ -84,6 +84,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+    const [duplicate] = await sql`
+      select id from tributes
+      where tenant_id = ${DEFAULT_TENANT_ID}
+        and lower(regexp_replace(trim(name), '\s+', ' ', 'g')) = ${normalize(name)}
+        and lower(regexp_replace(trim(message), '\s+', ' ', 'g')) = ${normalize(message)}
+      limit 1
+    `;
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "You've already submitted this tribute. Thank you!" },
+        { status: 409 },
+      );
+    }
+
     await sql`insert into tributes (tenant_id, name, message) values (${DEFAULT_TENANT_ID}, ${name}, ${message})`;
     return NextResponse.json({ ok: true });
   } catch (error) {
