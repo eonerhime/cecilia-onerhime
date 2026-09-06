@@ -26,7 +26,7 @@ export default async function Profile() {
 
   return (
     <main className="paper-grain min-h-screen">
-      <SiteNav displayName={settings.displayName} current="profile" />
+      <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="profile" />
       <section className="mx-auto max-w-4xl px-6 py-20 lg:px-10">
         <Editable
           blockKey="profile.eyebrow"

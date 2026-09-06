@@ -54,7 +54,7 @@ export default async function Programme() {
 
   return (
     <main className="paper-grain min-h-screen">
-      <SiteNav displayName={settings.displayName} current="programme" />
+      <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="programme" />
       <section className="mx-auto max-w-5xl px-6 py-20 lg:px-10">
         <Editable
           blockKey="programme.eyebrow"

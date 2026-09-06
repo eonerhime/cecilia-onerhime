@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import AdminNavLink from "@/components/admin-nav-link";
 
@@ -13,17 +14,34 @@ const ALL_LINKS: Array<{ key: "home" | PageKey; href: string; label: string }> =
 
 export default function SiteNav({
   displayName,
+  heroImageUrl,
   current,
 }: {
   displayName: string;
+  heroImageUrl?: string;
   current: PageKey;
 }) {
   const links = ALL_LINKS.filter((link) => link.key !== current);
 
   return (
     <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
-      <Link href="/" className="display-font text-2xl font-semibold tracking-tight">
-        {displayName}
+      <Link href="/" aria-label={displayName}>
+        {heroImageUrl ? (
+          <span className="relative block h-11 w-11 overflow-hidden rounded-full">
+            <Image
+              src={heroImageUrl}
+              alt={displayName}
+              fill
+              sizes="44px"
+              className="object-cover object-top"
+              unoptimized
+            />
+          </span>
+        ) : (
+          <span className="display-font text-2xl font-semibold tracking-tight">
+            {displayName}
+          </span>
+        )}
       </Link>
       <Link href="/" className="text-sm text-[#536b60] hover:text-[#c48a3a] md:hidden">
         ← Home
