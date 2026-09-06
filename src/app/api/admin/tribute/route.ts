@@ -36,3 +36,28 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { session, denied } = await requireSession("editor");
+    if (denied) return denied;
+
+    const body = await request.json();
+    const id = typeof body.id === "string" ? body.id : "";
+    if (!id) {
+      return NextResponse.json({ error: "Invalid tribute." }, { status: 400 });
+    }
+
+    const sql = getDatabase();
+    await sql`delete from tributes where id = ${id} and tenant_id = ${session.tenantId}`;
+    revalidatePath("/tributes");
+    revalidatePath("/", "layout");
+    return NextResponse.json({ data: { id } });
+  } catch (error) {
+    console.error("Tribute delete failed", error);
+    return NextResponse.json(
+      { error: "Unable to delete that tribute right now." },
+      { status: 500 },
+    );
+  }
+}
