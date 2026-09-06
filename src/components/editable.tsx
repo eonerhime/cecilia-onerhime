@@ -312,13 +312,13 @@ export function EditablePdfLink({
         <PencilIcon />
       </button>
       {editing && (
-        <div
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          className="absolute left-0 top-full z-40 mt-2 w-72 max-w-[90vw] rounded border border-[#d8cec0] bg-[#fbf8f2] p-3 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg"
-        >
+        // No onClick/preventDefault wrapper here (unlike EditWrapper's popover):
+        // this popover contains a <label>+file <input>, and calling
+        // preventDefault() anywhere during the click's bubble phase cancels
+        // the label's default action of opening the file picker. Safe to
+        // omit since, unlike Editable's usages, this is never nested inside
+        // an anchor/card that a stray click could navigate away to.
+        <div className="absolute left-0 top-full z-40 mt-2 w-72 max-w-[90vw] rounded border border-[#d8cec0] bg-[#fbf8f2] p-3 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg">
           <label className="block text-xs font-semibold text-[#1f2d2b]">
             PDF URL
             <input
