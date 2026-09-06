@@ -13,6 +13,7 @@ export type PendingMedia = {
   mediaUrl: string;
   mediaType: "image" | "video";
   caption: string | null;
+  albumId: string | null;
   createdAt: string;
 };
 
@@ -53,14 +54,15 @@ export async function getPendingTributes(tenantId: string): Promise<PendingTribu
 export async function getPendingMedia(tenantId: string): Promise<PendingMedia[]> {
   const sql = getDatabase();
   const rows = await sql`
-    select id, name, media_url, media_type, caption, created_at from media_submissions
+    select id, name, media_url, media_type, caption, album_id, created_at from media_submissions
     where tenant_id = ${tenantId} and status = 'pending'
     order by created_at asc
   `;
-  return rows.map(({ media_url, media_type, created_at, ...row }) => ({
+  return rows.map(({ media_url, media_type, album_id, created_at, ...row }) => ({
     ...row,
     mediaUrl: media_url,
     mediaType: media_type,
+    albumId: album_id,
     createdAt: created_at,
   })) as PendingMedia[];
 }

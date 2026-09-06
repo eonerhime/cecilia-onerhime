@@ -271,7 +271,7 @@ export function HeroVisualEditor({
       fetch("/api/admin", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "media", field: "heroImageUrl", value: heroImageUrl }),
+        body: JSON.stringify({ type: "field", field: "heroImageUrl", value: heroImageUrl }),
       }),
       fetch("/api/admin/content", {
         method: "PATCH",

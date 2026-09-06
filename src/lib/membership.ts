@@ -1,18 +1,24 @@
 import { getDatabase } from "@/lib/db";
 import type { Role } from "@/lib/session";
 
-/** Read-only: what role would this login resolve to, without granting it. */
+/**
+ * Read-only: what role would this login resolve to, without granting it.
+ * `userId` is null when no `users` row exists yet for this email — in that
+ * case there can be no membership, so only the invite is checked.
+ */
 export async function peekRoleForLogin(
   tenantId: string,
-  userId: string,
+  userId: string | null,
   email: string,
 ): Promise<Role | null> {
   const sql = getDatabase();
-  const [membership] = await sql`
-    select role from tenant_memberships
-    where tenant_id = ${tenantId} and user_id = ${userId}
-  `;
-  if (membership) return membership.role as Role;
+  if (userId) {
+    const [membership] = await sql`
+      select role from tenant_memberships
+      where tenant_id = ${tenantId} and user_id = ${userId}
+    `;
+    if (membership) return membership.role as Role;
+  }
 
   const [invite] = await sql`
     select role from admin_invites

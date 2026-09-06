@@ -37,6 +37,13 @@ export type ApprovedMedia = {
   mediaUrl: string;
   mediaType: "image" | "video";
   caption: string | null;
+  albumId: string | null;
+};
+
+export type Album = {
+  id: string;
+  name: string;
+  coverUrl: string | null;
 };
 
 export const getMemorialSettings = cache(async () => {
@@ -103,19 +110,38 @@ export async function getApprovedMediaList(limit = 200) {
   try {
     const sql = getDatabase();
     const media = await sql`
-      select id, media_url, media_type, caption
+      select id, media_url, media_type, caption, album_id
       from media_submissions
       where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
       order by display_order asc, created_at desc
       limit ${limit}
     `;
-    return media.map(({ media_url, media_type, ...item }) => ({
+    return media.map(({ media_url, media_type, album_id, ...item }) => ({
       ...item,
       mediaUrl: media_url,
       mediaType: media_type,
+      albumId: album_id,
     })) as ApprovedMedia[];
   } catch (error) {
     console.error("Approved media lookup failed", error);
+    return [];
+  }
+}
+
+export async function getAlbums(): Promise<Album[]> {
+  try {
+    const sql = getDatabase();
+    const rows = await sql`
+      select id, name, cover_url from albums
+      where tenant_id = ${DEFAULT_TENANT_ID}
+      order by sort_order asc, created_at asc
+    `;
+    return rows.map(({ cover_url, ...row }) => ({
+      ...row,
+      coverUrl: cover_url,
+    })) as Album[];
+  } catch (error) {
+    console.error("Albums lookup failed", error);
     return [];
   }
 }

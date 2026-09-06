@@ -147,7 +147,7 @@ export default function SiteAudioPlayer({
         ref={audioRef}
         src={musicUrl}
         loop={musicLoop}
-        preload="none"
+        preload="auto"
         onLoadedMetadata={(event) => {
           event.currentTarget.volume = volume / 100;
         }}

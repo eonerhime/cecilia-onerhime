@@ -84,6 +84,8 @@ export async function POST(request: Request) {
     }
 
     if (type === "images") {
+      const albumIdRaw = form.get("albumId");
+      const albumId = typeof albumIdRaw === "string" && albumIdRaw ? albumIdRaw : null;
       const files = form
         .getAll("files")
         .filter((file): file is File => file instanceof File);
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
         }),
       );
       for (const mediaUrl of uploaded)
-        await sql`insert into media_submissions (tenant_id, name, media_url, media_type) values (${session.tenantId}, 'Family upload', ${mediaUrl}, 'image')`;
+        await sql`insert into media_submissions (tenant_id, name, media_url, media_type, album_id, status) values (${session.tenantId}, 'Family upload', ${mediaUrl}, 'image', ${albumId}, 'approved')`;
       return NextResponse.json({ data: { imported: uploaded.length } });
     }
 
