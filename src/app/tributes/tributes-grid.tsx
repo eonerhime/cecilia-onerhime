@@ -224,7 +224,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                   <textarea
                     value={draftMessage}
                     onChange={(event) => setDraftMessage(event.target.value)}
-                    maxLength={2000}
+                    maxLength={20000}
                     rows={8}
                     className="mt-2 w-full resize-none border-b border-[#b5a998] bg-transparent px-0 py-2 text-base font-normal normal-case tracking-normal text-[#1f2d2b] outline-none"
                   />

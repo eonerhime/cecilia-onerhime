@@ -13,7 +13,7 @@ export async function PATCH(request: Request) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const message = typeof body.message === "string" ? body.message.trim() : "";
 
-    if (!id || !name || !message || name.length > 80 || message.length > 2000) {
+    if (!id || !name || !message || name.length > 80 || message.length > 20000) {
       return NextResponse.json(
         { error: "Please provide a name and message." },
         { status: 400 },
