@@ -248,3 +248,13 @@ alter table media_submissions add column if not exists album_id uuid references 
 create index if not exists media_submissions_album_idx on media_submissions (album_id);
 
 alter table media_submissions add column if not exists thumbnail_url text;
+
+alter table tributes add column if not exists display_order integer not null default 999999;
+
+update tributes t
+set display_order = ranked.rn
+from (
+  select id, row_number() over (partition by tenant_id order by created_at desc) as rn
+  from tributes
+) as ranked
+where t.id = ranked.id and t.display_order = 999999;

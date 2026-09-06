@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useEditMode } from "@/components/edit-mode";
 import type { ApprovedTribute } from "@/lib/memorial";
@@ -29,6 +29,9 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   const [draftName, setDraftName] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   function open(tribute: ApprovedTribute) {
     setDraftName(tribute.name);
@@ -59,6 +62,38 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
     router.refresh();
   }
 
+  async function persistOrder(next: ApprovedTribute[]) {
+    setSavingOrder(true);
+    try {
+      await fetch("/api/admin/tribute-order", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: next.map((tribute) => tribute.id) }),
+      });
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) {
+      setDragId(null);
+      return;
+    }
+    const fromIndex = tributesState.findIndex((tribute) => tribute.id === dragId);
+    const toIndex = tributesState.findIndex((tribute) => tribute.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDragId(null);
+      return;
+    }
+    const reordered = [...tributesState];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setTributesState(reordered);
+    persistOrder(reordered);
+    setDragId(null);
+  }
+
   useEffect(() => {
     if (!active) return;
     function onKeyDown(event: KeyboardEvent) {
@@ -79,13 +114,37 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
 
   return (
     <>
-      <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {reorderable && tributesState.length > 1 && (
+        <p className="mt-8 text-xs uppercase tracking-[.14em] text-[#536b60]">
+          Drag tributes to reorder{savingOrder ? " · Saving…" : ""}
+        </p>
+      )}
+      <div
+        className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${
+          reorderable && tributesState.length > 1 ? "mt-4" : "mt-12"
+        }`}
+      >
         {tributesState.map((tribute) => (
           <button
             key={tribute.id}
             type="button"
-            onClick={() => open(tribute)}
-            className="group relative flex aspect-square flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-transform hover:-translate-y-1 hover:border-[#c48a3a]"
+            draggable={reorderable}
+            onDragStart={() => setDragId(tribute.id)}
+            onDragOver={(event: DragEvent<HTMLButtonElement>) => {
+              if (reorderable) event.preventDefault();
+            }}
+            onDrop={(event: DragEvent<HTMLButtonElement>) => {
+              event.preventDefault();
+              handleDrop(tribute.id);
+            }}
+            onDragEnd={() => setDragId(null)}
+            onClick={() => {
+              if (dragId) return;
+              open(tribute);
+            }}
+            className={`group relative flex aspect-square flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-transform hover:-translate-y-1 hover:border-[#c48a3a] ${
+              reorderable ? "cursor-grab active:cursor-grabbing" : ""
+            } ${dragId === tribute.id ? "opacity-40" : ""}`}
           >
             {reorderable && (
               <span className="absolute right-3 top-3 flex rounded-full bg-[#c48a3a] p-1.5 text-[#1f2d2b]">
