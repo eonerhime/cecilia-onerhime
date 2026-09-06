@@ -153,7 +153,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                 if (dragId) return;
                 open(tribute);
               }}
-              className={`group flex aspect-square w-full flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-transform hover:-translate-y-1 hover:border-[#c48a3a] ${
+              className={`group relative z-0 flex aspect-square w-full flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-left text-[#1f2d2b] transition-all duration-300 hover:z-10 hover:scale-105 hover:shadow-xl ${
                 reorderable ? "cursor-grab active:cursor-grabbing" : ""
               } ${dragId === tribute.id ? "opacity-40" : ""}`}
             >
