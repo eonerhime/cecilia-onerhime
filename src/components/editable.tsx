@@ -218,6 +218,152 @@ export function EditableSetting({
 }
 
 /**
+ * A "view PDF" link with an inline uploader/URL editor next to it. Used for
+ * per-event programme documents, where each event needs its own file rather
+ * than one shared setting field or plain text block.
+ */
+export function EditablePdfLink({
+  blockKey,
+  value,
+  label,
+  linkClassName,
+}: {
+  blockKey: string;
+  value: string;
+  label: string;
+  linkClassName?: string;
+}) {
+  const router = useRouter();
+  const { canEdit, editMode, activeEditorId, setActiveEditorId } = useEditMode();
+  const editorId = `pdf:${blockKey}`;
+  const editing = activeEditorId === editorId;
+  const [url, setUrl] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function uploadFile(file: File | null) {
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    const form = new FormData();
+    form.set("file", file);
+    const response = await fetch("/api/admin/upload-pdf", {
+      method: "POST",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    setUploading(false);
+    if (!response.ok) {
+      setUploadError(result?.error || "Upload failed.");
+      return;
+    }
+    setUrl(result.data.url);
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch("/api/admin/content", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockKey, value: url }),
+    });
+    setSaving(false);
+    setActiveEditorId(null);
+    router.refresh();
+  }
+
+  if (!canEdit || !editMode) {
+    if (!value) return null;
+    return (
+      <a href={value} target="_blank" rel="noreferrer" className={linkClassName}>
+        {label} <span aria-hidden="true">↗</span>
+      </a>
+    );
+  }
+
+  return (
+    <div className="relative inline-flex items-center gap-2">
+      {value ? (
+        <a href={value} target="_blank" rel="noreferrer" className={linkClassName}>
+          {label} <span aria-hidden="true">↗</span>
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setUrl(value);
+            setActiveEditorId(editorId);
+          }}
+          className="text-xs font-semibold text-[#536b60] underline underline-offset-2"
+        >
+          Add programme PDF
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          setUrl(value);
+          setActiveEditorId(editorId);
+        }}
+        aria-label="Edit programme PDF"
+        className="flex rounded-full bg-[#c48a3a] p-1 text-[#1f2d2b]"
+      >
+        <PencilIcon />
+      </button>
+      {editing && (
+        <div
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          className="absolute left-0 top-full z-40 mt-2 w-72 max-w-[90vw] rounded border border-[#d8cec0] bg-[#fbf8f2] p-3 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg"
+        >
+          <label className="block text-xs font-semibold text-[#1f2d2b]">
+            PDF URL
+            <input
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="Public PDF URL"
+              className="mt-1 w-full border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
+            />
+          </label>
+          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+            {uploading ? "Uploading..." : "Or upload a PDF"}
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={(event) => uploadFile(event.target.files?.[0] || null)}
+            />
+          </label>
+          {uploadError && (
+            <p className="mt-1 text-xs text-[#b8786f]">{uploadError}</p>
+          )}
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveEditorId(null)}
+              className="rounded-full border border-[#b5a998] px-3 py-1.5 text-xs font-semibold text-[#1f2d2b]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="rounded-full bg-[#1f2d2b] px-3 py-1.5 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * A single pencil for the hero image + caption. Kept separate from
  * `Editable`/`EditableSetting` because both wrapped elements already carry
  * their own `absolute`/`relative` positioning — wrapping either in another

@@ -245,3 +245,5 @@ create index if not exists albums_tenant_idx on albums (tenant_id, sort_order);
 
 alter table media_submissions add column if not exists album_id uuid references albums(id) on delete set null;
 create index if not exists media_submissions_album_idx on media_submissions (album_id);
+
+alter table media_submissions add column if not exists thumbnail_url text;

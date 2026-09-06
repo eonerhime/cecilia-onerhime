@@ -359,6 +359,7 @@ export default async function Home() {
                   mediaType: "image" as const,
                   caption: null,
                   albumId: null,
+                  thumbnailUrl: null,
                 }))
             ).map((item: ApprovedMedia) => (
               <div
