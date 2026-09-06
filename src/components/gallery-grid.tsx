@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 
@@ -62,18 +62,37 @@ function CoverTile({
   coverUrl,
   fallback,
   onClick,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  dimmed,
 }: {
   label: string;
   coverUrl: string | null | undefined;
   fallback: MediaItem | undefined;
   onClick: () => void;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDrop?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: () => void;
+  dimmed?: boolean;
 }) {
   const imageUrl = coverUrl || (fallback?.mediaType === "image" ? fallback.mediaUrl : null);
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative aspect-square overflow-hidden bg-[#536b60] text-left"
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`group relative aspect-square overflow-hidden bg-[#536b60] text-left ${
+        draggable ? "cursor-grab active:cursor-grabbing" : ""
+      } ${dimmed ? "opacity-40" : ""}`}
     >
       {imageUrl && (
         <Image
@@ -138,6 +157,8 @@ export default function GalleryGrid({
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [dragAlbumId, setDragAlbumId] = useState<string | null>(null);
+  const [savingAlbumOrder, setSavingAlbumOrder] = useState(false);
 
   const images = visiblePhotos;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -225,6 +246,38 @@ export default function GalleryGrid({
     });
     persistOrder(reordered);
     setDragId(null);
+  }
+
+  async function persistAlbumOrder(next: Album[]) {
+    setSavingAlbumOrder(true);
+    try {
+      await fetch("/api/admin/album-order", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: next.map((album) => album.id) }),
+      });
+    } finally {
+      setSavingAlbumOrder(false);
+    }
+  }
+
+  function handleAlbumDrop(targetId: string) {
+    if (!dragAlbumId || dragAlbumId === targetId) {
+      setDragAlbumId(null);
+      return;
+    }
+    const fromIndex = albumList.findIndex((album) => album.id === dragAlbumId);
+    const toIndex = albumList.findIndex((album) => album.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDragAlbumId(null);
+      return;
+    }
+    const reordered = [...albumList];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setAlbumList(reordered);
+    persistAlbumOrder(reordered);
+    setDragAlbumId(null);
   }
 
   async function assignAlbum(mediaId: string, albumId: string) {
@@ -467,25 +520,43 @@ export default function GalleryGrid({
       )}
 
       {mediaTab === "photos" && view === "covers" && (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SHOW_ALL_PHOTOS_COVER && (
-            <CoverTile
-              label="All photos"
-              coverUrl={null}
-              fallback={photoMedia[0]}
-              onClick={() => setView("all")}
-            />
+        <>
+          {reorderable && albumList.length > 1 && (
+            <p className="mt-8 text-xs uppercase tracking-[.14em] text-[#536b60]">
+              Drag albums to reorder{savingAlbumOrder ? " · Saving…" : ""}
+            </p>
           )}
-          {albumList.map((album) => (
-            <CoverTile
-              key={album.id}
-              label={album.name}
-              coverUrl={album.coverUrl}
-              fallback={photoMedia.find((item) => item.albumId === album.id)}
-              onClick={() => setView(album.id)}
-            />
-          ))}
-        </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {SHOW_ALL_PHOTOS_COVER && (
+              <CoverTile
+                label="All photos"
+                coverUrl={null}
+                fallback={photoMedia[0]}
+                onClick={() => setView("all")}
+              />
+            )}
+            {albumList.map((album) => (
+              <CoverTile
+                key={album.id}
+                label={album.name}
+                coverUrl={album.coverUrl}
+                fallback={photoMedia.find((item) => item.albumId === album.id)}
+                onClick={() => setView(album.id)}
+                draggable={reorderable}
+                onDragStart={() => setDragAlbumId(album.id)}
+                onDragOver={(event) => {
+                  if (reorderable) event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  handleAlbumDrop(album.id);
+                }}
+                onDragEnd={() => setDragAlbumId(null)}
+                dimmed={dragAlbumId === album.id}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {mediaTab === "photos" && view !== "covers" && (

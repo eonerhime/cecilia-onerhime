@@ -374,6 +374,21 @@ export default async function Home() {
                     sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                     className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                   />
+                ) : item.thumbnailUrl ? (
+                  <>
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt=""
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#1f2d2b]/45 p-6 text-center text-[#fbf8f2] transition-colors group-hover:bg-[#1f2d2b]/60">
+                      <span className="display-font text-3xl">
+                        ▶ Video memory
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex h-full items-center justify-center p-6 text-center text-[#fbf8f2]">
                     <span className="display-font text-3xl">
