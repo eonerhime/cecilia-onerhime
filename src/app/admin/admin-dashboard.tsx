@@ -985,6 +985,11 @@ export default function AdminDashboard({
             key={item.id}
             name={item.name}
             date={item.createdAt}
+            warning={
+              item.possibleDuplicate
+                ? "Another tribute already exists under this name — check before approving."
+                : undefined
+            }
             onApprove={() => moderate("tribute", item.id, "approved")}
             onReject={() => moderate("tribute", item.id, "rejected")}
           >
@@ -1247,12 +1252,14 @@ function ReviewSection({
 function ReviewCard({
   name,
   date,
+  warning,
   onApprove,
   onReject,
   children,
 }: {
   name: string;
   date: string;
+  warning?: string;
   onApprove: () => void;
   onReject: () => void;
   children: React.ReactNode;
@@ -1265,6 +1272,11 @@ function ReviewCard({
           {new Date(date).toLocaleDateString()}
         </time>
       </div>
+      {warning && (
+        <p className="mt-3 border-l-2 border-[#b8786f] bg-[#b8786f]/10 px-3 py-2 text-xs normal-case tracking-normal text-[#b8786f]">
+          ⚠ {warning}
+        </p>
+      )}
       <div className="mt-6">{children}</div>
       <div className="mt-8 flex flex-wrap gap-2">
         <button

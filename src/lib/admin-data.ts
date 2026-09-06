@@ -5,6 +5,7 @@ export type PendingTribute = {
   name: string;
   message: string;
   createdAt: string;
+  possibleDuplicate: boolean;
 };
 
 export type PendingMedia = {
@@ -42,12 +43,23 @@ export type PendingInvite = {
 export async function getPendingTributes(tenantId: string): Promise<PendingTribute[]> {
   const sql = getDatabase();
   const rows = await sql`
-    select id, name, message, created_at from tributes
-    where tenant_id = ${tenantId} and status = 'pending'
-    order by created_at asc
+    select t.id, t.name, t.message, t.created_at,
+      exists (
+        select 1 from tributes other
+        where other.tenant_id = t.tenant_id
+          and other.id <> t.id
+          and lower(trim(other.name)) = lower(trim(t.name))
+      ) as possible_duplicate
+    from tributes t
+    where t.tenant_id = ${tenantId} and t.status = 'pending'
+    order by t.created_at asc
   `;
   return rows.map(
-    ({ created_at, ...row }) => ({ ...row, createdAt: created_at }),
+    ({ created_at, possible_duplicate, ...row }) => ({
+      ...row,
+      createdAt: created_at,
+      possibleDuplicate: possible_duplicate,
+    }),
   ) as PendingTribute[];
 }
 
