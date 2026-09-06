@@ -351,7 +351,8 @@ export function EditablePdfLink({
             <button
               type="button"
               onClick={save}
-              disabled={saving}
+              disabled={saving || uploading}
+              title={uploading ? "Wait for the upload to finish" : undefined}
               className="rounded-full bg-[#1f2d2b] px-3 py-1.5 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
             >
               {saving ? "Saving..." : "Save"}

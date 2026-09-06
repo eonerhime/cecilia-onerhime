@@ -240,6 +240,7 @@ create table if not exists albums (
 );
 
 alter table albums add column if not exists cover_url text;
+alter table albums add column if not exists hidden boolean not null default false;
 
 create index if not exists albums_tenant_idx on albums (tenant_id, sort_order);
 
