@@ -12,6 +12,7 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,6 +26,12 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
       setState("sent");
       event.currentTarget.reset();
     } else {
+      const body = await response.json().catch(() => null);
+      setErrorMessage(
+        typeof body?.error === "string"
+          ? body.error
+          : "Something went wrong. Please try again.",
+      );
       setState("error");
     }
   }
@@ -105,9 +112,7 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
         {state === "sending" ? "Sending..." : "Send photo"}
       </button>
       {state === "error" && (
-        <p className="text-sm text-[#b8786f]">
-          Something went wrong. Please try again.
-        </p>
+        <p className="text-sm text-[#b8786f]">{errorMessage}</p>
       )}
     </form>
   );
