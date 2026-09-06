@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import type { Role, Session } from "@/lib/session";
 import { ROLE_DESCRIPTIONS, hasRole } from "@/lib/roles";
 import type { Album, MusicAutoplay } from "@/lib/memorial";
@@ -118,19 +119,19 @@ export default function AdminDashboard({
     setUploadingHero(true);
     setError("");
     setNotice("");
-    const form = new FormData();
-    form.set("file", file);
-    const response = await fetch("/api/admin/upload-image", {
-      method: "POST",
-      body: form,
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
+    let url: string;
+    try {
+      const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-image",
+      });
+      url = blob.url;
+    } catch (error) {
       setUploadingHero(false);
-      setError(result?.error || "Upload failed.");
+      setError(error instanceof Error ? error.message : "Upload failed.");
       return;
     }
-    const saved = await persistMediaField("heroImageUrl", result.data.url);
+    const saved = await persistMediaField("heroImageUrl", url);
     setUploadingHero(false);
     if (saved) {
       setNotice("Hero image uploaded and saved.");
@@ -143,19 +144,19 @@ export default function AdminDashboard({
     setUploadingMusic(true);
     setError("");
     setNotice("");
-    const form = new FormData();
-    form.set("file", file);
-    const response = await fetch("/api/admin/upload-audio", {
-      method: "POST",
-      body: form,
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) {
+    let url: string;
+    try {
+      const blob = await upload(`memorial/audio/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-audio",
+      });
+      url = blob.url;
+    } catch (error) {
       setUploadingMusic(false);
-      setError(result?.error || "Upload failed.");
+      setError(error instanceof Error ? error.message : "Upload failed.");
       return;
     }
-    const saved = await persistMediaField("musicUrl", result.data.url);
+    const saved = await persistMediaField("musicUrl", url);
     setUploadingMusic(false);
     if (saved) {
       setNotice("Music track uploaded and saved.");
@@ -233,13 +234,32 @@ export default function AdminDashboard({
     setImporting("images");
     setError("");
     setNotice("");
-    const form = new FormData();
-    form.set("type", "images");
-    if (selectedAlbumId) form.set("albumId", selectedAlbumId);
-    Array.from(files).forEach((file) => form.append("files", file));
+
+    let mediaUrls: string[];
+    try {
+      mediaUrls = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
+            access: "public",
+            handleUploadUrl: "/api/admin/upload-image",
+          });
+          return blob.url;
+        }),
+      );
+    } catch (error) {
+      setImporting(null);
+      setError(error instanceof Error ? error.message : "Bulk image upload failed.");
+      return;
+    }
+
     const response = await fetch("/api/admin/import", {
       method: "POST",
-      body: form,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "images",
+        albumId: selectedAlbumId || undefined,
+        mediaUrls,
+      }),
     });
     const result = await response.json();
     setImporting(null);
@@ -261,19 +281,18 @@ export default function AdminDashboard({
 
     let thumbnailUrl: string | undefined;
     if (videoThumbnailFile) {
-      const form = new FormData();
-      form.set("file", videoThumbnailFile);
-      const uploadResponse = await fetch("/api/admin/upload-image", {
-        method: "POST",
-        body: form,
-      });
-      const uploadResult = await uploadResponse.json().catch(() => null);
-      if (!uploadResponse.ok) {
+      try {
+        const blob = await upload(
+          `memorial/${crypto.randomUUID()}-${videoThumbnailFile.name}`,
+          videoThumbnailFile,
+          { access: "public", handleUploadUrl: "/api/admin/upload-image" },
+        );
+        thumbnailUrl = blob.url;
+      } catch (error) {
         setAddingVideo(false);
-        setError(uploadResult?.error || "Thumbnail upload failed.");
+        setError(error instanceof Error ? error.message : "Thumbnail upload failed.");
         return;
       }
-      thumbnailUrl = uploadResult.data.url;
     }
 
     const response = await fetch("/api/admin/video", {
@@ -309,9 +328,26 @@ export default function AdminDashboard({
     setError("");
     setNotice("");
     const form = new FormData(event.currentTarget);
+    const name = typeof form.get("name") === "string" ? (form.get("name") as string) : "";
+    const cover = form.get("cover");
+    let coverUrl: string | undefined;
+    if (cover instanceof File && cover.size > 0) {
+      try {
+        const blob = await upload(`memorial/albums/${crypto.randomUUID()}-${cover.name}`, cover, {
+          access: "public",
+          handleUploadUrl: "/api/admin/upload-image",
+        });
+        coverUrl = blob.url;
+      } catch (error) {
+        setAlbumBusy(false);
+        setError(error instanceof Error ? error.message : "Cover upload failed.");
+        return;
+      }
+    }
     const response = await fetch("/api/admin/albums", {
       method: "POST",
-      body: form,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, coverUrl }),
     });
     const result = await response.json().catch(() => null);
     setAlbumBusy(false);
@@ -319,7 +355,7 @@ export default function AdminDashboard({
       setError(result?.error || "Unable to create that album.");
       return;
     }
-    setAlbums((current) => [...current, result.data]);
+    setAlbums((current) => [...current, { ...result.data, hidden: false }]);
     setNewAlbumName("");
     event.currentTarget.reset();
     setNotice("Album created.");
@@ -329,22 +365,29 @@ export default function AdminDashboard({
     if (!file) return;
     setError("");
     setNotice("");
-    const form = new FormData();
-    form.set("id", albumId);
-    form.set("cover", file);
+    let coverUrl: string;
+    try {
+      const blob = await upload(`memorial/albums/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-image",
+      });
+      coverUrl = blob.url;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to update that album's cover.");
+      return;
+    }
     const response = await fetch("/api/admin/albums", {
       method: "PATCH",
-      body: form,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: albumId, coverUrl }),
     });
-    const result = await response.json().catch(() => null);
     if (!response.ok) {
+      const result = await response.json().catch(() => null);
       setError(result?.error || "Unable to update that album's cover.");
       return;
     }
     setAlbums((current) =>
-      current.map((album) =>
-        album.id === albumId ? { ...album, coverUrl: result.data.coverUrl } : album,
-      ),
+      current.map((album) => (album.id === albumId ? { ...album, coverUrl } : album)),
     );
     setNotice("Album cover updated.");
   }

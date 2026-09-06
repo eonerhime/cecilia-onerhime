@@ -1,4 +1,3 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { requireSession } from "@/lib/admin-auth";
@@ -37,9 +36,31 @@ export async function POST(request: Request) {
   if (denied) return denied;
 
   try {
+    const contentType = request.headers.get("content-type") || "";
+    const sql = getDatabase();
+
+    if (contentType.includes("application/json")) {
+      const body = await request.json();
+      if (body.type !== "images") {
+        return NextResponse.json({ error: "Unknown import type." }, { status: 400 });
+      }
+      const albumId = typeof body.albumId === "string" && body.albumId ? body.albumId : null;
+      const mediaUrls = Array.isArray(body.mediaUrls)
+        ? body.mediaUrls.filter((url: unknown): url is string => typeof url === "string")
+        : [];
+      if (!mediaUrls.length || mediaUrls.length > MAX_FILES) {
+        return NextResponse.json(
+          { error: `Choose 1-${MAX_FILES} image files.` },
+          { status: 400 },
+        );
+      }
+      for (const mediaUrl of mediaUrls)
+        await sql`insert into media_submissions (tenant_id, name, media_url, media_type, album_id, status) values (${session.tenantId}, 'Family upload', ${mediaUrl}, 'image', ${albumId}, 'approved')`;
+      return NextResponse.json({ data: { imported: mediaUrls.length } });
+    }
+
     const form = await request.formData();
     const type = form.get("type");
-    const sql = getDatabase();
 
     if (type === "tributes") {
       const file = form.get("file");
@@ -81,41 +102,6 @@ export async function POST(request: Request) {
       for (const row of validRows)
         await sql`insert into tributes (tenant_id, name, message) values (${session.tenantId}, ${row.name}, ${row.message})`;
       return NextResponse.json({ data: { imported: validRows.length } });
-    }
-
-    if (type === "images") {
-      const albumIdRaw = form.get("albumId");
-      const albumId = typeof albumIdRaw === "string" && albumIdRaw ? albumIdRaw : null;
-      const files = form
-        .getAll("files")
-        .filter((file): file is File => file instanceof File);
-      if (!files.length || files.length > MAX_FILES)
-        return NextResponse.json(
-          { error: `Choose 1-${MAX_FILES} image files.` },
-          { status: 400 },
-        );
-      const images = files.filter(
-        (file) =>
-          file.type.startsWith("image/") && file.size <= 10 * 1024 * 1024,
-      );
-      if (images.length !== files.length)
-        return NextResponse.json(
-          { error: "Only images up to 10 MB each are accepted." },
-          { status: 400 },
-        );
-      const uploaded = await Promise.all(
-        images.map(async (file) => {
-          const blob = await put(
-            `memorial/${crypto.randomUUID()}-${file.name}`,
-            file,
-            { access: "public", addRandomSuffix: true },
-          );
-          return blob.url;
-        }),
-      );
-      for (const mediaUrl of uploaded)
-        await sql`insert into media_submissions (tenant_id, name, media_url, media_type, album_id, status) values (${session.tenantId}, 'Family upload', ${mediaUrl}, 'image', ${albumId}, 'approved')`;
-      return NextResponse.json({ data: { imported: uploaded.length } });
     }
 
     return NextResponse.json(

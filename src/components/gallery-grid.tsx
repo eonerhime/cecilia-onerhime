@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 
 const AUTOPLAY_MS = 3000;
@@ -253,23 +254,23 @@ export default function GalleryGrid({
 
   async function uploadThumbnail(mediaId: string, file: File | null) {
     if (!file) return;
-    const form = new FormData();
-    form.set("file", file);
-    const response = await fetch("/api/admin/upload-image", {
-      method: "POST",
-      body: form,
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok) return;
+    let url: string;
+    try {
+      const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-image",
+      });
+      url = blob.url;
+    } catch {
+      return;
+    }
     setOrderedMedia((current) =>
-      current.map((item) =>
-        item.id === mediaId ? { ...item, thumbnailUrl: result.data.url } : item,
-      ),
+      current.map((item) => (item.id === mediaId ? { ...item, thumbnailUrl: url } : item)),
     );
     await fetch("/api/admin/media-thumbnail", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mediaId, thumbnailUrl: result.data.url }),
+      body: JSON.stringify({ mediaId, thumbnailUrl: url }),
     });
   }
 

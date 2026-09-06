@@ -1,37 +1,30 @@
-import { put } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/admin-auth";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const { denied } = await requireSession("editor");
   if (denied) return denied;
 
   try {
-    const form = await request.formData();
-    const file = form.get("file");
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Choose an image file." }, { status: 400 });
-    }
-    if (!file.type.startsWith("image/") || file.size > MAX_BYTES) {
-      return NextResponse.json(
-        { error: "Only images up to 10 MB are accepted." },
-        { status: 400 },
-      );
-    }
-
-    const blob = await put(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
-      access: "public",
-      addRandomSuffix: true,
+    const body = (await request.json()) as HandleUploadBody;
+    const result = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ["image/*"],
+        maximumSizeInBytes: MAX_BYTES,
+        addRandomSuffix: true,
+      }),
     });
-
-    return NextResponse.json({ data: { url: blob.url } });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Image upload failed", error);
     return NextResponse.json(
       { error: "Upload failed. Check storage configuration." },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }
