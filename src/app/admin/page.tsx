@@ -41,7 +41,7 @@ export default async function AdminPage({
         getMemorialSettings(),
         getTenantMembers(session.tenantId),
         getPendingInvites(session.tenantId),
-        getAlbums(),
+        getAlbums({ includeHidden: true }),
       ])
     : null;
 

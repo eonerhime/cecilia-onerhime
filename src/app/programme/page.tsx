@@ -40,8 +40,17 @@ export default async function Programme() {
   const fullProgrammeCopy = block(
     blocks,
     "programme.full.copy",
-    "The official PDF will be available here.",
+    "Each event's programme, once uploaded, appears here.",
   );
+
+  const events = DEFAULT_EVENTS.map((event) => ({
+    ...event,
+    title: block(blocks, `programme.event.${event.number}.title`, event.title),
+    detail: block(blocks, `programme.event.${event.number}.detail`, event.detail),
+    copy: block(blocks, `programme.event.${event.number}.copy`, event.copy),
+    pdfUrl: block(blocks, `programme.event.${event.number}.pdfUrl`, ""),
+  }));
+  const eventsWithPdf = events.filter((event) => event.pdfUrl);
 
   return (
     <main className="paper-grain min-h-screen">
@@ -66,66 +75,44 @@ export default async function Programme() {
           </h1>
         </Editable>
         <div className="mt-12 divide-y divide-[#d8cec0] border-y border-[#d8cec0]">
-          {DEFAULT_EVENTS.map((event, index) => {
-            const title = block(
-              blocks,
-              `programme.event.${event.number}.title`,
-              event.title,
-            );
-            const detail = block(
-              blocks,
-              `programme.event.${event.number}.detail`,
-              event.detail,
-            );
-            const copy = block(
-              blocks,
-              `programme.event.${event.number}.copy`,
-              event.copy,
-            );
-            const pdfUrl = block(
-              blocks,
-              `programme.event.${event.number}.pdfUrl`,
-              "",
-            );
-            return (
-              <article
-                className="grid gap-4 py-7 md:grid-cols-[80px_1fr_1fr]"
-                key={event.number}
+          {events.map((event, index) => (
+            <article
+              className="grid gap-4 py-7 md:grid-cols-[80px_1fr_1fr]"
+              key={event.number}
+            >
+              <span className="text-sm text-[#c48a3a]">0{index + 1}</span>
+              <Editable
+                blockKey={`programme.event.${event.number}.title`}
+                value={event.title}
               >
-                <span className="text-sm text-[#c48a3a]">0{index + 1}</span>
+                <h2 className="display-font text-4xl">{event.title}</h2>
+              </Editable>
+              <div>
                 <Editable
-                  blockKey={`programme.event.${event.number}.title`}
-                  value={title}
+                  blockKey={`programme.event.${event.number}.detail`}
+                  value={event.detail}
                 >
-                  <h2 className="display-font text-4xl">{title}</h2>
+                  <p className="text-sm font-semibold">{event.detail}</p>
                 </Editable>
-                <div>
-                  <Editable
-                    blockKey={`programme.event.${event.number}.detail`}
-                    value={detail}
-                  >
-                    <p className="text-sm font-semibold">{detail}</p>
-                  </Editable>
-                  <Editable
-                    blockKey={`programme.event.${event.number}.copy`}
-                    value={copy}
-                  >
-                    <p className="mt-2 text-sm leading-6 text-[#536b60]">
-                      {copy}
-                    </p>
-                  </Editable>
-                  <div className="mt-3">
-                    <EditablePdfLink
-                      blockKey={`programme.event.${event.number}.pdfUrl`}
-                      value={pdfUrl}
-                      label="View programme"
-                      linkClassName="inline-flex items-center gap-1 text-xs font-semibold text-[#c48a3a] underline underline-offset-2"
-                    />
-                  </div>
+                <Editable
+                  blockKey={`programme.event.${event.number}.copy`}
+                  value={event.copy}
+                >
+                  <p className="mt-2 text-sm leading-6 text-[#536b60]">
+                    {event.copy}
+                  </p>
+                </Editable>
+                <div className="mt-3">
+                  <EditablePdfLink
+                    blockKey={`programme.event.${event.number}.pdfUrl`}
+                    value={event.pdfUrl}
+                    label="View programme"
+                    linkClassName="inline-flex items-center gap-1 text-xs font-semibold text-[#c48a3a] underline underline-offset-2"
+                  />
                 </div>
-              </article>
-            );
-          })}
+              </div>
+            </article>
+          ))}
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 bg-[#d9b5a8] p-6">
           <div>
@@ -136,12 +123,25 @@ export default async function Programme() {
               <p className="mt-1 text-sm text-[#536b60]">{fullProgrammeCopy}</p>
             </Editable>
           </div>
-          <a
-            href="/programme/programme-of-events.pdf"
-            className="rounded-full bg-[#1f2d2b] px-5 py-3 text-sm font-semibold text-[#fbf8f2]"
-          >
-            View PDF ↗
-          </a>
+          <div className="flex flex-wrap gap-3">
+            {eventsWithPdf.length ? (
+              eventsWithPdf.map((event) => (
+                <a
+                  key={event.number}
+                  href={event.pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-[#1f2d2b] px-5 py-3 text-sm font-semibold text-[#fbf8f2]"
+                >
+                  {event.title} ↗
+                </a>
+              ))
+            ) : (
+              <p className="text-sm text-[#536b60]">
+                Nothing has been uploaded yet.
+              </p>
+            )}
+          </div>
         </div>
       </section>
     </main>

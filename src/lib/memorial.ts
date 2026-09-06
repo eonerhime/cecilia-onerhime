@@ -45,6 +45,7 @@ export type Album = {
   id: string;
   name: string;
   coverUrl: string | null;
+  hidden: boolean;
 };
 
 export const getMemorialSettings = cache(async () => {
@@ -130,14 +131,20 @@ export async function getApprovedMediaList(limit = 200) {
   }
 }
 
-export async function getAlbums(): Promise<Album[]> {
+export async function getAlbums({ includeHidden = false } = {}): Promise<Album[]> {
   try {
     const sql = getDatabase();
-    const rows = await sql`
-      select id, name, cover_url from albums
-      where tenant_id = ${DEFAULT_TENANT_ID}
-      order by sort_order asc, created_at asc
-    `;
+    const rows = includeHidden
+      ? await sql`
+          select id, name, cover_url, hidden from albums
+          where tenant_id = ${DEFAULT_TENANT_ID}
+          order by sort_order asc, created_at asc
+        `
+      : await sql`
+          select id, name, cover_url, hidden from albums
+          where tenant_id = ${DEFAULT_TENANT_ID} and hidden = false
+          order by sort_order asc, created_at asc
+        `;
     return rows.map(({ cover_url, ...row }) => ({
       ...row,
       coverUrl: cover_url,

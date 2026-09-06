@@ -349,6 +349,25 @@ export default function AdminDashboard({
     setNotice("Album cover updated.");
   }
 
+  async function toggleAlbumHidden(albumId: string, hidden: boolean) {
+    setAlbums((current) =>
+      current.map((album) => (album.id === albumId ? { ...album, hidden } : album)),
+    );
+    const response = await fetch("/api/admin/albums", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: albumId, hidden }),
+    });
+    if (!response.ok) {
+      setAlbums((current) =>
+        current.map((album) => (album.id === albumId ? { ...album, hidden: !hidden } : album)),
+      );
+      setError("Unable to update that album's visibility.");
+      return;
+    }
+    setNotice(hidden ? "Album hidden from the public gallery." : "Album visible in the public gallery.");
+  }
+
   async function removeAlbum(id: string) {
     const response = await fetch("/api/admin/albums", {
       method: "DELETE",
@@ -740,7 +759,9 @@ export default function AdminDashboard({
               {albums.map((album) => (
                 <span
                   key={album.id}
-                  className="flex items-center gap-2 rounded-full border border-[#b5a998] px-3 py-1.5 text-xs text-[#1f2d2b]"
+                  className={`flex items-center gap-2 rounded-full border border-[#b5a998] px-3 py-1.5 text-xs text-[#1f2d2b] ${
+                    album.hidden ? "opacity-50" : ""
+                  }`}
                 >
                   {album.coverUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -751,6 +772,7 @@ export default function AdminDashboard({
                     />
                   )}
                   {album.name}
+                  {album.hidden && <span className="text-[#536b60]">(hidden)</span>}
                   <label className="cursor-pointer text-[#536b60] hover:text-[#1f2d2b]">
                     ⤴
                     <input
@@ -762,6 +784,27 @@ export default function AdminDashboard({
                       }
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => toggleAlbumHidden(album.id, !album.hidden)}
+                    aria-label={
+                      album.hidden
+                        ? `Make ${album.name} visible in the public gallery`
+                        : `Hide ${album.name} from the public gallery`
+                    }
+                    title={album.hidden ? "Hidden — click to make visible" : "Visible — click to hide"}
+                    className="text-[#536b60] hover:text-[#1f2d2b]"
+                  >
+                    {album.hidden ? (
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                        <path d="M2.28 2.22 1.22 3.28l2.4 2.4C1.9 6.72 1 8.06.6 9c.73 3.89 4 7 9 7 1.24 0 2.4-.19 3.44-.53l2.28 2.28 1.06-1.06L2.28 2.22ZM10 14a4 4 0 0 1-3.86-5.02l1.53 1.53a2 2 0 0 0 2.32 2.32l1.53 1.53A4 4 0 0 1 10 14Zm7.4-4c-.5-1.34-1.5-2.77-2.87-3.87l-1.09 1.09A6.8 6.8 0 0 1 15.6 9a6.9 6.9 0 0 1-1.94 2.4l1.05 1.05C16 11.4 17 10.1 17.4 9Z" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                        <path d="M10 3C5 3 1.73 6.11 1 10c.73 3.89 4 7 9 7s8.27-3.11 9-7c-.73-3.89-4-7-9-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+                      </svg>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeAlbum(album.id)}

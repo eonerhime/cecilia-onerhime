@@ -87,6 +87,18 @@ export async function PATCH(request: Request) {
     } else {
       const body = await request.json();
       id = typeof body.id === "string" ? body.id : "";
+      if (!id) {
+        return NextResponse.json({ error: "Invalid album." }, { status: 400 });
+      }
+      if (typeof body.hidden === "boolean") {
+        const sql = getDatabase();
+        await sql`
+          update albums set hidden = ${body.hidden}
+          where id = ${id} and tenant_id = ${session.tenantId}
+        `;
+        revalidatePath("/", "layout");
+        return NextResponse.json({ data: { id, hidden: body.hidden } });
+      }
       coverUrl = typeof body.coverUrl === "string" ? body.coverUrl.trim() : null;
       if (!coverUrl || coverUrl.length > 1000) {
         return NextResponse.json({ error: "Invalid cover image." }, { status: 400 });
