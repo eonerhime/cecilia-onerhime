@@ -436,12 +436,12 @@ export default async function Home() {
             ).map((tribute) => (
               <blockquote
                 key={tribute.id}
-                className="flex aspect-square flex-col justify-between overflow-hidden bg-[#536b60] p-8 text-[#fbf8f2]"
+                className="flex aspect-square flex-col justify-between overflow-hidden border border-[#d8cec0] bg-[#fbf8f2] p-8 text-[#1f2d2b]"
               >
                 <p className="display-font line-clamp-6 text-2xl leading-tight">
                   “{tribute.message}”
                 </p>
-                <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.18em] text-[#e4bb72]">
+                <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.18em] text-[#536b60]">
                   {tribute.name}
                 </cite>
               </blockquote>
