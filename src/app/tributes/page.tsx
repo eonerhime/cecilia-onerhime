@@ -10,7 +10,7 @@ export default async function Tributes() {
 
   return (
     <main className="paper-grain min-h-screen">
-      <SiteNav displayName={settings.displayName} current="tributes" />
+      <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="tributes" />
       <section className="mx-auto max-w-5xl px-6 py-20 lg:px-10">
         <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
           Words of love

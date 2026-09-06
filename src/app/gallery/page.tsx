@@ -12,7 +12,7 @@ export default async function Gallery() {
 
   return (
     <main className="paper-grain min-h-screen">
-      <SiteNav displayName={settings.displayName} current="gallery" />
+      <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="gallery" />
       <section className="mx-auto max-w-6xl px-6 py-20 lg:px-10">
         <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
           The memories

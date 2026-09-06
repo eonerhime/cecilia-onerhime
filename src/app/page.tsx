@@ -58,11 +58,23 @@ export default async function Home() {
     <main className="paper-grain min-h-screen">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
         <EditableSetting instanceId="nav" field="displayName" settings={settings}>
-          <Link
-            href="/"
-            className="display-font text-2xl font-semibold tracking-tight"
-          >
-            {settings.displayName}
+          <Link href="/" aria-label={settings.displayName}>
+            {settings.heroImageUrl ? (
+              <span className="relative block h-11 w-11 overflow-hidden rounded-full">
+                <Image
+                  src={settings.heroImageUrl}
+                  alt={settings.displayName}
+                  fill
+                  sizes="44px"
+                  className="object-cover object-top"
+                  unoptimized
+                />
+              </span>
+            ) : (
+              <span className="display-font text-2xl font-semibold tracking-tight">
+                {settings.displayName}
+              </span>
+            )}
           </Link>
         </EditableSetting>
         <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
