@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { upload } from "@vercel/blob/client";
 
 type Album = {
   id: string;
@@ -17,14 +18,44 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("sending");
-    const form = new FormData(event.currentTarget);
+    const currentForm = event.currentTarget;
+    const form = new FormData(currentForm);
+    const file = form.get("file");
+    if (!(file instanceof File)) {
+      setErrorMessage("Please choose a photo.");
+      setState("error");
+      return;
+    }
+
+    let mediaUrl: string;
+    try {
+      // Uploaded directly to Blob (bypassing our own API route as a request
+      // body) since Vercel serverless functions cap the body at ~4.5MB,
+      // well under what a modern phone photo can be.
+      const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/media-share/upload",
+      });
+      mediaUrl = blob.url;
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      setState("error");
+      return;
+    }
+
     const response = await fetch("/api/media-share", {
       method: "POST",
-      body: form,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.get("name"),
+        caption: form.get("caption"),
+        albumId: form.get("albumId"),
+        mediaUrl,
+      }),
     });
     if (response.ok) {
       setState("sent");
-      event.currentTarget.reset();
+      currentForm.reset();
     } else {
       const body = await response.json().catch(() => null);
       setErrorMessage(

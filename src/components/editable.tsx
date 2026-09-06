@@ -400,20 +400,18 @@ export function HeroVisualEditor({
     setUploading(true);
     setUploadError("");
     setUploaded(false);
-    const form = new FormData();
-    form.set("file", file);
-    const response = await fetch("/api/admin/upload-image", {
-      method: "POST",
-      body: form,
-    });
-    const result = await response.json().catch(() => null);
-    setUploading(false);
-    if (!response.ok) {
-      setUploadError(result?.error || "Upload failed.");
-      return;
+    try {
+      const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-image",
+      });
+      setHeroImageUrl(blob.url);
+      setUploaded(true);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploading(false);
     }
-    setHeroImageUrl(result.data.url);
-    setUploaded(true);
   }
 
   async function save() {

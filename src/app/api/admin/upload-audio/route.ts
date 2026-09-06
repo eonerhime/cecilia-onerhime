@@ -1,37 +1,30 @@
-import { put } from "@vercel/blob";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/admin-auth";
 
-const MAX_BYTES = 20 * 1024 * 1024;
+const MAX_BYTES = 50 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const { denied } = await requireSession("editor");
   if (denied) return denied;
 
   try {
-    const form = await request.formData();
-    const file = form.get("file");
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Choose an audio file." }, { status: 400 });
-    }
-    if (!file.type.startsWith("audio/") || file.size > MAX_BYTES) {
-      return NextResponse.json(
-        { error: "Only audio files up to 20 MB are accepted." },
-        { status: 400 },
-      );
-    }
-
-    const blob = await put(`memorial/audio/${crypto.randomUUID()}-${file.name}`, file, {
-      access: "public",
-      addRandomSuffix: true,
+    const body = (await request.json()) as HandleUploadBody;
+    const result = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ["audio/*"],
+        maximumSizeInBytes: MAX_BYTES,
+        addRandomSuffix: true,
+      }),
     });
-
-    return NextResponse.json({ data: { url: blob.url } });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Audio upload failed", error);
     return NextResponse.json(
       { error: "Upload failed. Check storage configuration." },
-      { status: 500 },
+      { status: 400 },
     );
   }
 }
