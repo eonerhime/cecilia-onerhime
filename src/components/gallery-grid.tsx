@@ -15,6 +15,7 @@ type MediaItem = {
   mediaType: "image" | "video";
   caption: string | null;
   albumId: string | null;
+  thumbnailUrl?: string | null;
 };
 
 type Album = {
@@ -238,6 +239,40 @@ export default function GalleryGrid({
     });
   }
 
+  async function deleteMedia(mediaId: string) {
+    if (!window.confirm("Delete this item? This can't be undone.")) return;
+    setOrderedMedia((current) => current.filter((item) => item.id !== mediaId));
+    if (activeIndex !== null) close();
+    setActiveVideo((current) => (current?.id === mediaId ? null : current));
+    await fetch("/api/admin/media", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaId }),
+    });
+  }
+
+  async function uploadThumbnail(mediaId: string, file: File | null) {
+    if (!file) return;
+    const form = new FormData();
+    form.set("file", file);
+    const response = await fetch("/api/admin/upload-image", {
+      method: "POST",
+      body: form,
+    });
+    const result = await response.json().catch(() => null);
+    if (!response.ok) return;
+    setOrderedMedia((current) =>
+      current.map((item) =>
+        item.id === mediaId ? { ...item, thumbnailUrl: result.data.url } : item,
+      ),
+    );
+    await fetch("/api/admin/media-thumbnail", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaId, thumbnailUrl: result.data.url }),
+    });
+  }
+
   async function setAsCover(albumId: string, coverUrl: string) {
     setAlbumList((current) =>
       current.map((album) => (album.id === albumId ? { ...album, coverUrl } : album)),
@@ -310,13 +345,33 @@ export default function GalleryGrid({
               if (dragId) return;
               setActiveVideo(item);
             }}
-            className={`group relative flex aspect-square w-full flex-col items-center justify-center gap-2 bg-[#536b60] p-6 text-center text-[#fbf8f2] hover:bg-[#1f2d2b] ${
-              reorderable ? "cursor-grab active:cursor-grabbing" : ""
-            } ${dragId === item.id ? "opacity-40" : ""}`}
+            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left ${
+              item.thumbnailUrl ? "" : "flex flex-col items-center justify-center gap-2 p-6 text-center text-[#fbf8f2] hover:bg-[#1f2d2b]"
+            } ${reorderable ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === item.id ? "opacity-40" : ""}`}
           >
-            <span className="display-font text-3xl">▶ Video memory</span>
-            {item.caption && (
-              <span className="text-xs text-[#d9e0d9]">{item.caption}</span>
+            {item.thumbnailUrl ? (
+              <>
+                <Image
+                  src={item.thumbnailUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#1f2d2b]/45 p-6 text-center text-[#fbf8f2] transition-colors group-hover:bg-[#1f2d2b]/60">
+                  <span className="display-font text-3xl">▶ Video memory</span>
+                  {item.caption && (
+                    <span className="text-xs text-[#d9e0d9]">{item.caption}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="display-font text-3xl">▶ Video memory</span>
+                {item.caption && (
+                  <span className="text-xs text-[#d9e0d9]">{item.caption}</span>
+                )}
+              </>
             )}
           </button>
         )}
@@ -345,6 +400,35 @@ export default function GalleryGrid({
             className="absolute right-2 top-2 z-10 rounded bg-[#fbf8f2] px-2 py-1 text-xs text-[#1f2d2b] shadow"
           >
             Set as cover
+          </button>
+        )}
+        {reorderable && item.mediaType === "video" && (
+          <label
+            onClick={(event) => event.stopPropagation()}
+            className="absolute right-2 top-2 z-10 cursor-pointer rounded bg-[#fbf8f2] px-2 py-1 text-xs text-[#1f2d2b] shadow"
+          >
+            {item.thumbnailUrl ? "Replace thumbnail" : "Add thumbnail"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => uploadThumbnail(item.id, event.target.files?.[0] || null)}
+            />
+          </label>
+        )}
+        {reorderable && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              deleteMedia(item.id);
+            }}
+            aria-label="Delete"
+            className="absolute bottom-2 right-2 z-10 rounded-full bg-[#fbf8f2] p-1.5 text-[#b8786f] shadow hover:bg-[#b8786f] hover:text-[#fbf8f2]"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+              <path d="M8 2a1 1 0 0 0-1 1v1H4a1 1 0 1 0 0 2h.1l.9 10.1A2 2 0 0 0 6.99 18h6.02a2 2 0 0 0 1.99-1.9L15.9 6h.1a1 1 0 1 0 0-2h-3V3a1 1 0 0 0-1-1H8Zm0 2h4V3H8v1ZM7 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8Zm4 0a1 1 0 1 1 2 0v6a1 1 0 1 1-2 0V8Z" />
+            </svg>
           </button>
         )}
       </div>

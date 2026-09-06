@@ -89,6 +89,7 @@ export default function AdminDashboard({
   const [uploadingMusic, setUploadingMusic] = useState(false);
   const [videoUrl, setVideoUrl] = useState("");
   const [videoCaption, setVideoCaption] = useState("");
+  const [videoThumbnailFile, setVideoThumbnailFile] = useState<File | null>(null);
   const [addingVideo, setAddingVideo] = useState(false);
   const [albums, setAlbums] = useState(initialAlbums);
   const [selectedAlbumId, setSelectedAlbumId] = useState("");
@@ -257,6 +258,24 @@ export default function AdminDashboard({
     setAddingVideo(true);
     setError("");
     setNotice("");
+
+    let thumbnailUrl: string | undefined;
+    if (videoThumbnailFile) {
+      const form = new FormData();
+      form.set("file", videoThumbnailFile);
+      const uploadResponse = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: form,
+      });
+      const uploadResult = await uploadResponse.json().catch(() => null);
+      if (!uploadResponse.ok) {
+        setAddingVideo(false);
+        setError(uploadResult?.error || "Thumbnail upload failed.");
+        return;
+      }
+      thumbnailUrl = uploadResult.data.url;
+    }
+
     const response = await fetch("/api/admin/video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -264,6 +283,7 @@ export default function AdminDashboard({
         mediaUrl: videoUrl,
         caption: videoCaption,
         albumId: selectedAlbumId || undefined,
+        thumbnailUrl,
       }),
     });
     const result = await response.json().catch(() => null);
@@ -272,9 +292,14 @@ export default function AdminDashboard({
       setError(result?.error || "Unable to add that video.");
       return;
     }
-    setNotice("Video added to the gallery.");
+    setNotice(
+      result?.data?.thumbnailUrl
+        ? "Video added to the gallery with a thumbnail."
+        : "Video added to the gallery.",
+    );
     setVideoUrl("");
     setVideoCaption("");
+    setVideoThumbnailFile(null);
     router.refresh();
   }
 
@@ -818,6 +843,9 @@ export default function AdminDashboard({
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
               A YouTube, Vimeo, or direct video file link — it&apos;ll play
               in an embedded player, published to the gallery immediately.
+              YouTube and Vimeo links get a thumbnail automatically; other
+              links can have one uploaded below (or added later from the
+              gallery).
             </p>
             <form onSubmit={addVideo} className="mt-5 space-y-2">
               <input
@@ -836,6 +864,15 @@ export default function AdminDashboard({
                 maxLength={300}
                 className="w-full border-b border-[#b5a998] bg-transparent px-0 py-2 text-sm font-normal outline-none placeholder:text-[#8b9c8b]"
               />
+              <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+                {videoThumbnailFile ? videoThumbnailFile.name : "Optional thumbnail image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(event) => setVideoThumbnailFile(event.target.files?.[0] || null)}
+                />
+              </label>
               <button
                 disabled={addingVideo}
                 className="w-full rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2] disabled:opacity-60"

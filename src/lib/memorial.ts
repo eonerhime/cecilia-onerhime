@@ -38,6 +38,7 @@ export type ApprovedMedia = {
   mediaType: "image" | "video";
   caption: string | null;
   albumId: string | null;
+  thumbnailUrl: string | null;
 };
 
 export type Album = {
@@ -110,17 +111,18 @@ export async function getApprovedMediaList(limit = 200) {
   try {
     const sql = getDatabase();
     const media = await sql`
-      select id, media_url, media_type, caption, album_id
+      select id, media_url, media_type, caption, album_id, thumbnail_url
       from media_submissions
       where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
       order by display_order asc, created_at desc
       limit ${limit}
     `;
-    return media.map(({ media_url, media_type, album_id, ...item }) => ({
+    return media.map(({ media_url, media_type, album_id, thumbnail_url, ...item }) => ({
       ...item,
       mediaUrl: media_url,
       mediaType: media_type,
       albumId: album_id,
+      thumbnailUrl: thumbnail_url,
     })) as ApprovedMedia[];
   } catch (error) {
     console.error("Approved media lookup failed", error);
