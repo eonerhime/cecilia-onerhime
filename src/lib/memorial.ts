@@ -98,7 +98,7 @@ export async function getApprovedTributesList(limit = 200) {
       select id, name, message
       from tributes
       where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
-      order by created_at desc
+      order by display_order asc, created_at desc
       limit ${limit}
     `;
     return tributes as ApprovedTribute[];
