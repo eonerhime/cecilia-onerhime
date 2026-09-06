@@ -1,4 +1,5 @@
 import TributeForm from "./tribute-form";
+import TributesGrid from "./tributes-grid";
 import { getApprovedTributesList, getMemorialSettings } from "@/lib/memorial";
 import SiteNav from "@/components/site-nav";
 
@@ -16,37 +17,21 @@ export default async function Tributes() {
           Words of love
         </p>
         <h1 className="display-font mt-6 text-7xl leading-[.85]">Tributes</h1>
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          <div className="border border-[#d8cec0] bg-[#fbf8f2] p-8">
-            <h2 className="display-font text-4xl">Leave a tribute</h2>
-            <p className="mt-3 text-sm leading-6 text-[#536b60]">
-              Your words will be sent to the family for review before they are
-              shared here.
-            </p>
-            <TributeForm />
-          </div>
-          {tributes.length ? (
-            <div className="space-y-5">
-              {tributes.map((tribute) => (
-                <blockquote
-                  key={tribute.id}
-                  className="bg-[#536b60] p-8 text-[#fbf8f2]"
-                >
-                  <p className="display-font text-3xl leading-tight">
-                    “{tribute.message}”
-                  </p>
-                  <cite className="mt-8 block text-xs not-italic uppercase tracking-[.2em] text-[#e4bb72]">
-                    {tribute.name}
-                  </cite>
-                </blockquote>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm leading-6 text-[#536b60]">
-              No tributes have been shared yet. Be the first to leave one.
-            </div>
-          )}
+        <div className="mt-12 max-w-xl border border-[#d8cec0] bg-[#fbf8f2] p-8">
+          <h2 className="display-font text-4xl">Leave a tribute</h2>
+          <p className="mt-3 text-sm leading-6 text-[#536b60]">
+            Your words will be sent to the family for review before they are
+            shared here.
+          </p>
+          <TributeForm />
         </div>
+        {tributes.length ? (
+          <TributesGrid tributes={tributes} />
+        ) : (
+          <div className="mt-12 border border-[#d8cec0] bg-[#fbf8f2] p-8 text-sm leading-6 text-[#536b60]">
+            No tributes have been shared yet. Be the first to leave one.
+          </div>
+        )}
       </section>
     </main>
   );
