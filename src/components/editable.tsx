@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 
 function PencilIcon() {
@@ -246,19 +247,22 @@ export function EditablePdfLink({
     if (!file) return;
     setUploading(true);
     setUploadError("");
-    const form = new FormData();
-    form.set("file", file);
-    const response = await fetch("/api/admin/upload-pdf", {
-      method: "POST",
-      body: form,
-    });
-    const result = await response.json().catch(() => null);
-    setUploading(false);
-    if (!response.ok) {
-      setUploadError(result?.error || "Upload failed.");
-      return;
+    try {
+      // Uploaded directly from the browser to Vercel Blob (handleUploadUrl
+      // just issues a token) rather than through our own API route as a
+      // request body — programme PDFs routinely exceed Vercel's ~4.5MB
+      // serverless function payload limit, which a route-handler upload
+      // would hit regardless of our own size check.
+      const blob = await upload(`memorial/programme/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-pdf",
+      });
+      setUrl(blob.url);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploading(false);
     }
-    setUrl(result.data.url);
   }
 
   async function save() {
