@@ -32,8 +32,15 @@ export default async function Profile() {
   return (
     <main className="paper-grain min-h-screen">
       <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="profile" />
-      <section className="mx-auto max-w-4xl px-6 py-20 lg:px-10">
-        <Reveal as="div" className="grid items-center gap-10 md:grid-cols-[1.1fr_.9fr]">
+      <section className="relative mx-auto max-w-4xl px-6 py-20 lg:px-10">
+        {/* Kept small and confined to the header row (not spanning the full,
+            content-dense section like other pages) so it stays a quiet
+            accent rather than competing with the sticky sidebar photos. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-112 overflow-hidden">
+          <div className="orb h-56 w-56 bg-[#c48a3a] -right-10 top-0" />
+          <div className="orb orb-delay h-48 w-48 bg-[#c48a3a] left-1/3 top-1/2" />
+        </div>
+        <Reveal as="div" className="relative z-10 grid items-center gap-10 md:grid-cols-[1.1fr_.9fr]">
           <div>
             <Editable
               blockKey="profile.eyebrow"

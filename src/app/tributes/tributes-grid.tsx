@@ -188,7 +188,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
         {tributesState.map((tribute) => {
           const kind = tribute.attachmentUrl ? getAttachmentKind(tribute.attachmentUrl) : null;
           return (
-          <div key={tribute.id} className="relative">
+          <div key={tribute.id} className="relative min-w-0">
             <button
               type="button"
               draggable={reorderable}

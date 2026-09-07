@@ -8,11 +8,15 @@ export default function ContactPage() {
       <Link href="/" className="link-underline text-sm text-[#536b60] hover:text-[#c48a3a]">
         ← Back home
       </Link>
-      <section className="mx-auto max-w-6xl py-16 sm:py-20">
-        <Reveal as="p" className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
+      <section className="relative mx-auto max-w-6xl py-16 sm:py-20">
+        <div className="orb-field">
+          <div className="orb h-64 w-64 bg-[#c48a3a] left-1/4 -top-10" />
+          <div className="orb orb-delay h-72 w-72 bg-[#c48a3a] -right-10 bottom-0" />
+        </div>
+        <Reveal as="p" className="relative z-10 rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
           Websites with meaning
         </Reveal>
-        <div className="mt-6 grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-start">
+        <div className="relative z-10 mt-6 grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-start">
           <Reveal as="div" delayMs={80}>
             <h1 className="display-font text-6xl leading-[.86] sm:text-8xl">
               Make a place

@@ -56,8 +56,12 @@ export default async function Programme() {
   return (
     <main className="paper-grain min-h-screen">
       <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="programme" />
-      <section className="mx-auto max-w-5xl px-6 py-20 lg:px-10">
-        <Reveal as="div">
+      <section className="relative mx-auto max-w-5xl px-6 py-20 lg:px-10">
+        <div className="orb-field">
+          <div className="orb h-96 w-96 bg-[#c48a3a] -right-20 bottom-0" />
+          <div className="orb orb-delay h-60 w-60 bg-[#c48a3a] -left-12 -top-8" />
+        </div>
+        <Reveal as="div" className="relative z-10">
           <Editable
             blockKey="programme.eyebrow"
             value={block(blocks, "programme.eyebrow", "The farewell")}
@@ -77,7 +81,7 @@ export default async function Programme() {
             </h1>
           </Editable>
         </Reveal>
-        <div className="mt-12 divide-y divide-[#d8cec0] border-y border-[#d8cec0]">
+        <div className="relative z-10 mt-12 divide-y divide-[#d8cec0] border-y border-[#d8cec0]">
           {events.map((event, index) => (
             <Reveal
               as="article"
