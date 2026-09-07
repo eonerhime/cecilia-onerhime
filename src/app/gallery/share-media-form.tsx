@@ -8,18 +8,16 @@ type Album = {
   name: string;
 };
 
+type Mode = "photo" | "video";
+
 export default function ShareMediaForm({ albums }: { albums: Album[] }) {
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<Mode | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setState("sending");
-    const currentForm = event.currentTarget;
-    const form = new FormData(currentForm);
+  async function submitPhoto(currentForm: HTMLFormElement, form: FormData) {
     const file = form.get("file");
     if (!(file instanceof File)) {
       setErrorMessage("Please choose a photo.");
@@ -67,22 +65,72 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
     }
   }
 
-  if (!open) {
+  async function submitVideo(currentForm: HTMLFormElement, form: FormData) {
+    // Link only, never a raw file upload — a phone video can run into the
+    // hundreds of megabytes uncompressed, and this project has no video
+    // transcoding pipeline (and won't — see MRU ADR-015). Share the video
+    // wherever it's already hosted (YouTube, Vimeo, etc.) and paste the link.
+    const response = await fetch("/api/media-share/video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.get("name"),
+        videoUrl: form.get("videoUrl"),
+        caption: form.get("caption"),
+        albumId: form.get("albumId"),
+      }),
+    });
+    if (response.ok) {
+      setState("sent");
+      currentForm.reset();
+    } else {
+      const body = await response.json().catch(() => null);
+      setErrorMessage(
+        typeof body?.error === "string"
+          ? body.error
+          : "Something went wrong. Please try again.",
+      );
+      setState("error");
+    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setState("sending");
+    const currentForm = event.currentTarget;
+    const form = new FormData(currentForm);
+    if (mode === "video") {
+      await submitVideo(currentForm, form);
+    } else {
+      await submitPhoto(currentForm, form);
+    }
+  }
+
+  if (!mode) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-10 items-center rounded-full bg-[#c48a3a] px-6 text-sm font-semibold text-[#1f2d2b] transition-transform hover:-translate-y-0.5"
-      >
-        Share a photo
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setMode("photo")}
+          className="flex h-10 items-center rounded-full bg-[#c48a3a] px-6 text-sm font-semibold text-[#1f2d2b] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          Share a photo
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("video")}
+          className="flex h-10 items-center rounded-full border border-[#b5a998] px-6 text-sm font-semibold text-[#1f2d2b] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#1f2d2b] hover:shadow-lg"
+        >
+          Share a video
+        </button>
+      </div>
     );
   }
 
   if (state === "sent")
     return (
       <p className="mt-8 max-w-md border-l-2 border-[#c48a3a] px-4 py-3 text-sm leading-6 text-[#536b60]">
-        Thank you. Your photo has been sent to the family for review.
+        Thank you. Your {mode} has been sent to the family for review.
       </p>
     );
 
@@ -92,10 +140,12 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
       className="mt-8 max-w-md space-y-3 border border-[#d8cec0] bg-[#fbf8f2] p-6"
     >
       <div className="flex items-center justify-between">
-        <h2 className="display-font text-3xl">Share a photo</h2>
+        <h2 className="display-font text-3xl">
+          {mode === "video" ? "Share a video" : "Share a photo"}
+        </h2>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => setMode(null)}
           aria-label="Close"
           className="text-xl text-[#536b60] hover:text-[#1f2d2b]"
         >
@@ -109,10 +159,21 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
         className="w-full border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
         placeholder="Your name"
       />
-      <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-3 text-center text-sm font-semibold text-[#1f2d2b]">
-        Choose a photo
-        <input required type="file" name="file" accept="image/*" className="sr-only" />
-      </label>
+      {mode === "video" ? (
+        <input
+          required
+          type="url"
+          name="videoUrl"
+          maxLength={1000}
+          className="w-full border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
+          placeholder="Video link (YouTube, Vimeo, etc.)"
+        />
+      ) : (
+        <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-3 text-center text-sm font-semibold text-[#1f2d2b]">
+          Choose a photo
+          <input required type="file" name="file" accept="image/*" className="sr-only" />
+        </label>
+      )}
       <input
         name="caption"
         maxLength={300}
@@ -138,9 +199,9 @@ export default function ShareMediaForm({ albums }: { albums: Album[] }) {
       )}
       <button
         disabled={state === "sending"}
-        className="w-full rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold text-[#1f2d2b] disabled:opacity-60"
+        className="w-full rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold text-[#1f2d2b] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
       >
-        {state === "sending" ? "Sending..." : "Send photo"}
+        {state === "sending" ? "Sending..." : mode === "video" ? "Send video" : "Send photo"}
       </button>
       {state === "error" && (
         <p className="text-sm text-[#b8786f]">{errorMessage}</p>
