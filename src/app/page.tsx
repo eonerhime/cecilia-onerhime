@@ -107,7 +107,7 @@ export default async function Home() {
       <section className="relative mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:px-10 lg:pb-32 lg:pt-16">
         <div className="orb-field">
           <div className="orb h-72 w-72 bg-[#c48a3a] -left-10 -top-10" />
-          <div className="orb orb-delay h-96 w-96 bg-[#d9b5a8] -right-16 top-1/3" />
+          <div className="orb orb-delay h-96 w-96 bg-[#c48a3a] -right-16 top-1/3" />
         </div>
         <div className="relative z-10">
           <Editable
@@ -199,7 +199,7 @@ export default async function Home() {
       </section>
       <section className="relative overflow-hidden border-y border-[#d8cec0] bg-[#536b60] text-[#fbf8f2]">
         <div className="orb-field">
-          <div className="orb h-80 w-80 bg-[#1f2d2b] -left-16 -top-16" />
+          <div className="orb h-80 w-80 bg-[#c48a3a] -left-16 -top-16" />
           <div className="orb orb-delay h-64 w-64 bg-[#c48a3a] right-0 bottom-0" />
         </div>
         <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[.8fr_1.2fr] lg:px-10">
