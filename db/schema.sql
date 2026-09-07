@@ -277,3 +277,32 @@ from (
   from tributes
 ) as ranked
 where t.id = ranked.id and t.display_order = 999999;
+
+create table if not exists hero_images (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  image_url text not null,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists hero_images_tenant_idx on hero_images (tenant_id, sort_order);
+
+-- Seeds the homepage hero carousel from the photos already committed to
+-- public/carousel/. Only runs while the tenant has no hero images at all,
+-- so it won't re-add photos an admin has deliberately deleted since.
+insert into hero_images (tenant_id, image_url, sort_order)
+select '00000000-0000-0000-0000-000000000001', v.image_url, v.sort_order
+from (
+  values
+    ('/carousel/mummy1.jpeg', 0),
+    ('/carousel/mummy2.jpeg', 1),
+    ('/carousel/mummy3.jpeg', 2),
+    ('/carousel/mummy4.jpeg', 3),
+    ('/carousel/mummy5.jpeg', 4),
+    ('/carousel/mummy6.jpeg', 5),
+    ('/carousel/mummy7.jpeg', 6)
+) as v(image_url, sort_order)
+where not exists (
+  select 1 from hero_images where tenant_id = '00000000-0000-0000-0000-000000000001'
+);
