@@ -30,3 +30,11 @@ export function getAttachmentKind(url: string): AttachmentKind {
   if (DOC_EXTENSIONS.has(extension)) return "doc";
   return "other";
 }
+
+// Previews a Word doc in-browser via Microsoft's public viewer, rather than
+// converting it (no server-side conversion, no third-party API, no new
+// infrastructure — see MRU ADR-011). Requires the source file to be
+// publicly reachable over HTTPS, which every Blob-uploaded attachment is.
+export function getOfficeEmbedUrl(url: string) {
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+}

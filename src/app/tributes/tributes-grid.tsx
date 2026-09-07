@@ -6,7 +6,7 @@ import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 import type { ApprovedTribute } from "@/lib/memorial";
-import { getAttachmentKind } from "@/lib/attachment";
+import { getAttachmentKind, getOfficeEmbedUrl } from "@/lib/attachment";
 
 const ATTACHMENT_ACCEPT =
   "application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*";
@@ -378,29 +378,54 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
               </>
             ) : (
               <>
-                {active.attachmentUrl && getAttachmentKind(active.attachmentUrl) === "image" ? (
-                  <div className="relative h-[65vh] w-full">
-                    <Image
-                      src={active.attachmentUrl}
-                      alt={`A letter from ${active.name}`}
-                      fill
-                      sizes="90vw"
-                      className="object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 py-6 text-center">
-                    <LetterIcon className="h-12 w-12 text-[#536b60]" />
-                    <a
-                      href={active.attachmentUrl ?? undefined}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-full bg-[#1f2d2b] px-6 py-3 text-sm font-semibold text-[#fbf8f2]"
-                    >
-                      {attachmentLabel(getAttachmentKind(active.attachmentUrl ?? ""))}
-                    </a>
-                  </div>
-                )}
+                {(() => {
+                  const kind = getAttachmentKind(active.attachmentUrl ?? "");
+                  if (kind === "image") {
+                    return (
+                      <div className="relative h-[65vh] w-full">
+                        <Image
+                          src={active.attachmentUrl!}
+                          alt={`A letter from ${active.name}`}
+                          fill
+                          sizes="90vw"
+                          className="object-contain"
+                        />
+                      </div>
+                    );
+                  }
+                  if (kind === "doc") {
+                    return (
+                      <div className="flex flex-col gap-2">
+                        <iframe
+                          src={getOfficeEmbedUrl(active.attachmentUrl!)}
+                          title={`A letter from ${active.name}`}
+                          className="h-[65vh] w-full border-0 bg-white"
+                        />
+                        <a
+                          href={active.attachmentUrl!}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="self-center text-xs text-[#536b60] underline underline-offset-2"
+                        >
+                          Open in a new tab ↗
+                        </a>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center gap-4 py-6 text-center">
+                      <LetterIcon className="h-12 w-12 text-[#536b60]" />
+                      <a
+                        href={active.attachmentUrl ?? undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full bg-[#1f2d2b] px-6 py-3 text-sm font-semibold text-[#fbf8f2]"
+                      >
+                        {attachmentLabel(kind)}
+                      </a>
+                    </div>
+                  );
+                })()}
                 <cite className="mt-8 block text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
                   {active.name}
                 </cite>
