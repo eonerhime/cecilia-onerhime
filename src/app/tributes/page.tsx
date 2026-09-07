@@ -26,7 +26,13 @@ export default async function Tributes() {
           // there's no equivalent empty space once the layout stacks to a
           // single column on mobile, so it'd just visually compete with the
           // "Leave a tribute" card there instead of sitting quietly behind it.
-          <div className="pointer-events-none absolute -right-6 top-0 z-0 hidden h-80 w-80 overflow-hidden rounded-full opacity-10 blur-xs sm:block lg:h-96 lg:w-96">
+          <div
+            className="pointer-events-none absolute -right-6 top-0 z-0 hidden h-80 w-80 opacity-25 sm:block lg:h-96 lg:w-96"
+            style={{
+              maskImage: "radial-gradient(circle, black 35%, transparent 70%)",
+              WebkitMaskImage: "radial-gradient(circle, black 35%, transparent 70%)",
+            }}
+          >
             <Image
               src={backgroundPhoto.imageUrl}
               alt=""
