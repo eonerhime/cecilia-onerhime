@@ -306,3 +306,39 @@ from (
 where not exists (
   select 1 from hero_images where tenant_id = '00000000-0000-0000-0000-000000000001'
 );
+
+-- `role` is explicit (not inferred from sort_order) so deleting the banner
+-- can never silently promote a supporting photo into that slot — see MRU
+-- ADR-016's revision note. At most one banner per tenant is enforced below;
+-- supporting photos are ordered among themselves by sort_order. No seed
+-- data — optional, empty by default.
+create table if not exists profile_images (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id) on delete cascade,
+  image_url text not null,
+  role text not null default 'supporting' check (role in ('banner', 'supporting')),
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists profile_images_tenant_idx on profile_images (tenant_id, sort_order);
+
+-- Migration for installs where profile_images already existed without
+-- `role` (banner was inferred positionally). Promote each tenant's
+-- earliest photo (by sort_order) to banner so existing cover photos
+-- aren't orphaned by the switch to an explicit role.
+alter table profile_images add column if not exists role text not null default 'supporting' check (role in ('banner', 'supporting'));
+update profile_images set role = 'banner'
+where id in (
+  select distinct on (tenant_id) id from profile_images
+  order by tenant_id, sort_order asc, created_at asc
+)
+-- Only for tenants with no banner yet — otherwise re-running this after the
+-- feature is in use could force-assign a banner to a tenant who deleted
+-- theirs on purpose and kept only supporting photos.
+and not exists (
+  select 1 from profile_images existing_banner
+  where existing_banner.tenant_id = profile_images.tenant_id and existing_banner.role = 'banner'
+);
+
+create unique index if not exists profile_images_one_banner_idx on profile_images (tenant_id) where role = 'banner';

@@ -13,8 +13,17 @@ export async function PATCH(request: Request) {
       typeof body.blockKey === "string" ? body.blockKey.trim() : "";
     const value = typeof body.value === "string" ? body.value : "";
 
-    if (!blockKey || blockKey.length > 200 || value.length > 5000) {
+    if (!blockKey || blockKey.length > 200) {
       return NextResponse.json({ error: "Invalid content." }, { status: 400 });
+    }
+    // Generous enough for a full life-story bio (the longest content block
+    // on the site) — the old 5000-character cap was silently rejecting
+    // saves partway through writing one, with no error shown to the editor.
+    if (value.length > 20000) {
+      return NextResponse.json(
+        { error: `That's too long (${value.length}/20000 characters). Please shorten it and try again.` },
+        { status: 400 },
+      );
     }
 
     const sql = getDatabase();

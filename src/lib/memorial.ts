@@ -54,6 +54,21 @@ export type HeroImage = {
   imageUrl: string;
 };
 
+export type ProfileImage = {
+  id: string;
+  imageUrl: string;
+};
+
+export type ProfileImages = {
+  banner: ProfileImage | null;
+  supporting: ProfileImage[];
+};
+
+// Up to two supporting photos beside the bio text; the banner is a separate
+// single slot, capped independently (see MRU ADR-016's revision note — role
+// is explicit per photo, never inferred from array position).
+export const MAX_SUPPORTING_IMAGES = 2;
+
 export const getMemorialSettings = cache(async () => {
   try {
     const sql = getDatabase();
@@ -179,6 +194,29 @@ export async function getHeroImages(): Promise<HeroImage[]> {
   } catch (error) {
     console.error("Hero images lookup failed", error);
     return [];
+  }
+}
+
+export async function getProfileImages(): Promise<ProfileImages> {
+  try {
+    const sql = getDatabase();
+    const rows = await sql`
+      select id, image_url, role from profile_images
+      where tenant_id = ${DEFAULT_TENANT_ID}
+      order by sort_order asc, created_at asc
+    `;
+    const images = rows.map(({ image_url, ...row }) => ({
+      id: row.id,
+      imageUrl: image_url,
+      role: row.role as "banner" | "supporting",
+    }));
+    return {
+      banner: images.find((image) => image.role === "banner") ?? null,
+      supporting: images.filter((image) => image.role === "supporting"),
+    };
+  } catch (error) {
+    console.error("Profile images lookup failed", error);
+    return { banner: null, supporting: [] };
   }
 }
 

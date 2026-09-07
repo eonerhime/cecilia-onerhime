@@ -710,7 +710,10 @@ export default function AdminDashboard({
             />
           </label>
         </div>
-        <HeroImagesManager
+        <ImageSetManager
+          title="Hero carousel"
+          description="Photos shown in rotation on the homepage. Add as many as you like; remove any you don't want anymore."
+          addLabel="Add a photo"
           images={heroImages}
           uploading={uploadingHeroCarousel}
           onUpload={addHeroImage}
@@ -836,7 +839,10 @@ export default function AdminDashboard({
               />
             </label>
           </div>
-          <HeroImagesManager
+          <ImageSetManager
+            title="Hero carousel"
+            description="Photos shown in rotation on the homepage. Add as many as you like; remove any you don't want anymore."
+            addLabel="Add a photo"
             images={heroImages}
             uploading={uploadingHeroCarousel}
             onUpload={addHeroImage}
@@ -1333,12 +1339,18 @@ export default function AdminDashboard({
   );
 }
 
-function HeroImagesManager({
+function ImageSetManager({
+  title,
+  description,
+  addLabel,
   images,
   uploading,
   onUpload,
   onDelete,
 }: {
+  title: string;
+  description: string;
+  addLabel: string;
   images: HeroImage[];
   uploading: boolean;
   onUpload: (file: File | null) => void;
@@ -1346,11 +1358,8 @@ function HeroImagesManager({
 }) {
   return (
     <div className="mt-6 border-t border-[#d8cec0] pt-6">
-      <p className="text-sm font-semibold text-[#1f2d2b]">Hero carousel</p>
-      <p className="mt-1 text-xs leading-5 text-[#536b60]">
-        Photos shown in rotation on the homepage. Add as many as you like;
-        remove any you don&apos;t want anymore.
-      </p>
+      <p className="text-sm font-semibold text-[#1f2d2b]">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-[#536b60]">{description}</p>
       {images.length > 0 && (
         <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
           {images.map((image) => (
@@ -1380,7 +1389,7 @@ function HeroImagesManager({
         </div>
       )}
       <label className="mt-4 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
-        {uploading ? "Uploading..." : "Add a photo"}
+        {uploading ? "Uploading..." : addLabel}
         <input
           type="file"
           accept="image/*"
