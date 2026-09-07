@@ -251,7 +251,24 @@ alter table media_submissions add column if not exists thumbnail_url text;
 
 alter table tributes add column if not exists display_order integer not null default 999999;
 
-alter table tributes add column if not exists pdf_url text;
+-- Originally shipped as `pdf_url` (PDF-only letters); renamed once
+-- letter tributes grew to also support Word docs and photos. The guard
+-- keeps this safe to run whether or not `pdf_url` ever made it into a
+-- given database.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'tributes' and column_name = 'pdf_url'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_name = 'tributes' and column_name = 'attachment_url'
+  ) then
+    alter table tributes rename column pdf_url to attachment_url;
+  end if;
+end $$;
+
+alter table tributes add column if not exists attachment_url text;
 
 update tributes t
 set display_order = ranked.rn

@@ -4,7 +4,7 @@ export type PendingTribute = {
   id: string;
   name: string;
   message: string;
-  pdfUrl: string | null;
+  attachmentUrl: string | null;
   createdAt: string;
   possibleDuplicate: boolean;
 };
@@ -44,7 +44,7 @@ export type PendingInvite = {
 export async function getPendingTributes(tenantId: string): Promise<PendingTribute[]> {
   const sql = getDatabase();
   const rows = await sql`
-    select t.id, t.name, t.message, t.pdf_url, t.created_at,
+    select t.id, t.name, t.message, t.attachment_url, t.created_at,
       exists (
         select 1 from tributes other
         where other.tenant_id = t.tenant_id
@@ -56,9 +56,9 @@ export async function getPendingTributes(tenantId: string): Promise<PendingTribu
     order by t.created_at asc
   `;
   return rows.map(
-    ({ created_at, possible_duplicate, pdf_url, ...row }) => ({
+    ({ created_at, possible_duplicate, attachment_url, ...row }) => ({
       ...row,
-      pdfUrl: pdf_url,
+      attachmentUrl: attachment_url,
       createdAt: created_at,
       possibleDuplicate: possible_duplicate,
     }),

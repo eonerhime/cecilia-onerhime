@@ -998,14 +998,14 @@ export default function AdminDashboard({
                 “{item.message}”
               </p>
             )}
-            {item.pdfUrl && (
+            {item.attachmentUrl && (
               <a
-                href={item.pdfUrl}
+                href={item.attachmentUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-2 inline-block text-sm text-[#536b60] underline underline-offset-4"
               >
-                Read the attached letter (PDF) ↗
+                View the attached letter ↗
               </a>
             )}
           </ReviewCard>
