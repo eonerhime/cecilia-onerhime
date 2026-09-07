@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import type { Role, Session } from "@/lib/session";
@@ -99,6 +99,17 @@ export default function AdminDashboard({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (!hasRole(session.role, "moderator")) return;
+    // Picks up tributes/media submitted by visitors while this dashboard is
+    // open, without the moderator needing to reload the page themselves.
+    // router.refresh() re-fetches the server-rendered props (this component
+    // keeps its own state, e.g. accountMenuOpen, untouched), so it's cheap
+    // and doesn't disrupt anything the moderator is in the middle of doing.
+    const interval = setInterval(() => router.refresh(), 30000);
+    return () => clearInterval(interval);
+  }, [router, session.role]);
 
   async function persistMediaField(field: "heroImageUrl" | "musicUrl", value: string) {
     const response = await fetch("/api/admin", {
@@ -517,10 +528,24 @@ export default function AdminDashboard({
   return (
     <div className="mt-12 space-y-12">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d8cec0] pb-6 text-sm text-[#536b60]">
-        <span>
-          Signed in as <strong>{session.displayName || session.email}</strong>{" "}
-          ({session.role})
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span>
+            Signed in as <strong>{session.displayName || session.email}</strong>{" "}
+            ({session.role})
+          </span>
+          {canModerate && total > 0 && (
+            <a
+              href={initialTributes.length > 0 ? "#review-tributes" : "#review-media"}
+              className="flex items-center gap-1.5 rounded-full bg-[#b8786f] px-3 py-1 text-xs font-semibold text-[#fbf8f2]"
+              aria-label={`${total} submission${total === 1 ? "" : "s"} awaiting review`}
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                <path d="M10 2a1 1 0 0 1 1 1v.35a5.5 5.5 0 0 1 4.5 5.4v2.4l1.32 2.64A1 1 0 0 1 16 15.5H4a1 1 0 0 1-.82-1.71L4.5 11.15v-2.4A5.5 5.5 0 0 1 9 3.35V3a1 1 0 0 1 1-1Zm0 15.5a2 2 0 0 0 1.94-1.5H8.06A2 2 0 0 0 10 17.5Z" />
+              </svg>
+              {total} pending
+            </a>
+          )}
+        </div>
         <div className="relative">
           <button
             type="button"
@@ -979,7 +1004,7 @@ export default function AdminDashboard({
       )}
 
       {canModerate && (
-      <ReviewSection title="Tributes" count={initialTributes.length}>
+      <ReviewSection id="review-tributes" title="Tributes" count={initialTributes.length}>
         {initialTributes.map((item) => (
           <ReviewCard
             key={item.id}
@@ -1014,7 +1039,7 @@ export default function AdminDashboard({
       )}
 
       {canModerate && (
-      <ReviewSection title="Gallery submissions" count={initialMedia.length}>
+      <ReviewSection id="review-media" title="Gallery submissions" count={initialMedia.length}>
         {initialMedia.map((item) => (
           <ReviewCard
             key={item.id}
@@ -1240,16 +1265,18 @@ export default function AdminDashboard({
 }
 
 function ReviewSection({
+  id,
   title,
   count,
   children,
 }: {
+  id?: string;
   title: string;
   count: number;
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section id={id}>
       <div className="mb-5 flex items-baseline justify-between border-b border-[#d8cec0] pb-3">
         <h2 className="display-font text-4xl">{title}</h2>
         <span className="text-xs uppercase tracking-[.2em] text-[#536b60]">
