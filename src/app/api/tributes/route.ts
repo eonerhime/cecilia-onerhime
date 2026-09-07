@@ -1,37 +1,27 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+import { checkRateLimit, getClientKey, recordAttempt } from "@/lib/rate-limit";
 
-function getClientKey(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const clientIp =
-    forwardedFor?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-  return `tribute:${clientIp}`;
+// Same ceiling as the upload step (/api/tributes/upload) — low enough to
+// bound spam, high enough that a family member submitting a few tributes,
+// or fixing a typo and resending, doesn't get locked out. Every accepted
+// tribute still sits as "pending" until a moderator approves it, so a
+// burst of submissions can't reach the public site on its own.
+const MAX_ATTEMPTS = 20;
+
+function formatWait(seconds: number) {
+  const minutes = Math.max(1, Math.ceil(seconds / 60));
+  return minutes === 1 ? "a minute" : `${minutes} minutes`;
 }
 
 export async function POST(request: Request) {
   try {
-    const sql = getDatabase();
-    const clientKey = getClientKey(request);
-    const [rateLimit] = await sql`
-      select locked_until
-      from admin_rate_limits
-      where client_key = ${clientKey}
-    `;
-    const lockedUntil = rateLimit?.locked_until
-      ? new Date(rateLimit.locked_until).getTime()
-      : 0;
-    if (lockedUntil > Date.now()) {
+    const clientKey = getClientKey(request, "tribute");
+    if (await checkRateLimit(clientKey)) {
       return NextResponse.json(
-        { error: "Too many submissions. Please try again later." },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(Math.ceil((lockedUntil - Date.now()) / 1000)),
-          },
-        },
+        { error: "You've submitted a few tributes recently. Please try again in a little while." },
+        { status: 429 },
       );
     }
 
@@ -59,44 +49,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const [attempt] = await sql`
-      insert into admin_rate_limits (client_key, failed_attempts)
-      values (${clientKey}, 1)
-      on conflict (client_key) do update set
-        failed_attempts = case
-          when admin_rate_limits.window_started < now() - interval '60 minutes' then 1
-          else admin_rate_limits.failed_attempts + 1
-        end,
-        window_started = case
-          when admin_rate_limits.window_started < now() - interval '60 minutes' then now()
-          else admin_rate_limits.window_started
-        end,
-        locked_until = case
-          when (
-            case
-              when admin_rate_limits.window_started < now() - interval '60 minutes' then 1
-              else admin_rate_limits.failed_attempts + 1
-            end
-          ) >= 5 then now() + interval '15 minutes'
-          else null
-        end
-      returning failed_attempts, locked_until
-    `;
-    if (attempt?.failed_attempts >= 5) {
-      const retryAfter = attempt.locked_until
-        ? Math.ceil(
-            (new Date(attempt.locked_until).getTime() - Date.now()) / 1000,
-          )
-        : 900;
+    const { limited, retryAfterSeconds } = await recordAttempt(clientKey, MAX_ATTEMPTS);
+    if (limited) {
       return NextResponse.json(
-        { error: "Too many submissions. Please try again later." },
+        {
+          error: `You've submitted a few tributes recently. Please wait ${formatWait(
+            retryAfterSeconds,
+          )} and try again.`,
+        },
         {
           status: 429,
-          headers: { "Retry-After": String(Math.max(retryAfter, 1)) },
+          headers: { "Retry-After": String(retryAfterSeconds) },
         },
       );
     }
 
+    const sql = getDatabase();
     const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
     if (message) {
       const [duplicate] = await sql`
