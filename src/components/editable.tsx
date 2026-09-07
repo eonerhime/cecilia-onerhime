@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
@@ -17,6 +17,7 @@ function EditWrapper({
   children,
   value,
   multiline,
+  richText,
   onSave,
   as = "div",
   wrapperClassName,
@@ -25,6 +26,7 @@ function EditWrapper({
   children: ReactNode;
   value: string;
   multiline?: boolean;
+  richText?: boolean;
   onSave: (value: string) => Promise<void>;
   as?: "div" | "span";
   wrapperClassName?: string;
@@ -33,15 +35,49 @@ function EditWrapper({
   const { canEdit, editMode, activeEditorId, setActiveEditorId } = useEditMode();
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editing = activeEditorId === editorId;
 
   if (!canEdit || !editMode) return <>{children}</>;
 
   async function save() {
     setSaving(true);
-    await onSave(draft);
-    setSaving(false);
-    setActiveEditorId(null);
+    setError("");
+    try {
+      await onSave(draft);
+      setActiveEditorId(null);
+    } catch (err) {
+      // Stay open on failure — closing (as this used to do unconditionally)
+      // silently discarded the draft with no indication anything went wrong.
+      setError(err instanceof Error ? err.message : "Save failed. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Wraps the current selection in `**bold**` (or inserts a placeholder if
+  // nothing is selected), then restores focus and puts the cursor right
+  // after the inserted markers so typing continues naturally.
+  function applyBold() {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = draft.slice(start, end) || "bold text";
+    const next = `${draft.slice(0, start)}**${selected}**${draft.slice(end)}`;
+    // Updating a controlled textarea's value resets its scrollTop in most
+    // browsers, even when the cursor stays in the same place — capture and
+    // restore it explicitly so bolding text mid-document doesn't jump the
+    // view back to the top.
+    const scrollTop = el.scrollTop;
+    setDraft(next);
+    const cursor = start + 2 + selected.length + 2;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+      el.scrollTop = scrollTop;
+    });
   }
 
   const Wrapper = as;
@@ -63,6 +99,7 @@ function EditWrapper({
           event.preventDefault();
           event.stopPropagation();
           setDraft(value);
+          setError("");
           setActiveEditorId(editorId);
         }}
         aria-label="Edit"
@@ -70,7 +107,73 @@ function EditWrapper({
       >
         <PencilIcon />
       </button>
-      {editing && (
+      {editing && multiline && (
+        // A large multi-line editor anchored right below the pencil (like the
+        // single-line popover below) can end up mostly off-screen when the
+        // field sits low on the page — the user has to scroll to find it.
+        // Centering it in the viewport instead means it's always visible the
+        // instant it opens, regardless of where its trigger is scrolled to.
+        <div
+          onClick={() => setActiveEditorId(null)}
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-[#1f2d2b]/40 p-4 pt-16 sm:pt-24"
+        >
+          <div
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded border border-[#d8cec0] bg-[#fbf8f2] p-4 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg"
+          >
+            {richText && (
+              <div className="mb-2 flex gap-1">
+                <button
+                  type="button"
+                  onClick={applyBold}
+                  aria-label="Bold"
+                  title="Bold selected text"
+                  className="rounded border border-[#b5a998] px-2.5 py-1 text-xs font-bold text-[#1f2d2b]"
+                >
+                  B
+                </button>
+              </div>
+            )}
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={12}
+              className="w-full resize-y border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
+            />
+            {error && <p className="mt-2 text-xs text-[#b8786f]">{error}</p>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setActiveEditorId(null);
+                }}
+                className="rounded-full border border-[#b5a998] px-3 py-1.5 text-xs font-semibold text-[#1f2d2b]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  save();
+                }}
+                disabled={saving}
+                className="rounded-full bg-[#1f2d2b] px-3 py-1.5 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editing && !multiline && (
         <div
           onClick={(event) => {
             event.preventDefault();
@@ -82,20 +185,12 @@ function EditWrapper({
           // oversized *absolute* offset at this popover's much smaller text.
           className="absolute left-0 top-full z-40 mt-2 w-72 max-w-[90vw] rounded border border-[#d8cec0] bg-[#fbf8f2] p-3 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg"
         >
-          {multiline ? (
-            <textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              rows={4}
-              className="w-full resize-none border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
-            />
-          ) : (
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              className="w-full border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
-            />
-          )}
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            className="w-full border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
+          />
+          {error && <p className="mt-2 text-xs text-[#b8786f]">{error}</p>}
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
@@ -131,6 +226,7 @@ export function Editable({
   blockKey,
   value,
   multiline,
+  richText,
   as,
   wrapperClassName,
   children,
@@ -138,6 +234,7 @@ export function Editable({
   blockKey: string;
   value: string;
   multiline?: boolean;
+  richText?: boolean;
   as?: "div" | "span";
   wrapperClassName?: string;
   children: ReactNode;
@@ -147,15 +244,20 @@ export function Editable({
     <EditWrapper
       value={value}
       multiline={multiline}
+      richText={richText}
       as={as}
       wrapperClassName={wrapperClassName}
       editorId={`block:${blockKey}`}
       onSave={async (next) => {
-        await fetch("/api/admin/content", {
+        const response = await fetch("/api/admin/content", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ blockKey, value: next }),
         });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || "Save failed. Please try again.");
+        }
         router.refresh();
       }}
     >
@@ -205,11 +307,15 @@ export function EditableSetting({
       wrapperClassName={wrapperClassName}
       editorId={`setting:${field}:${instanceId}`}
       onSave={async (next) => {
-        await fetch("/api/admin", {
+        const response = await fetch("/api/admin", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "settings", ...settings, [field]: next }),
         });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || "Save failed. Please try again.");
+        }
         router.refresh();
       }}
     >
@@ -267,14 +373,23 @@ export function EditablePdfLink({
 
   async function save() {
     setSaving(true);
-    await fetch("/api/admin/content", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blockKey, value: url }),
-    });
-    setSaving(false);
-    setActiveEditorId(null);
-    router.refresh();
+    setUploadError("");
+    try {
+      const response = await fetch("/api/admin/content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockKey, value: url }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setUploadError(body?.error || "Save failed. Please try again.");
+        return;
+      }
+      setActiveEditorId(null);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!canEdit || !editMode) {
@@ -382,19 +497,29 @@ export function HeroVisualEditor({ caption }: { caption: string }) {
   const editing = activeEditorId === editorId;
   const [captionDraft, setCaptionDraft] = useState(caption);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   if (!canEdit || !editMode) return null;
 
   async function save() {
     setSaving(true);
-    await fetch("/api/admin/content", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blockKey: "home.hero.caption", value: captionDraft }),
-    });
-    setSaving(false);
-    setActiveEditorId(null);
-    router.refresh();
+    setError("");
+    try {
+      const response = await fetch("/api/admin/content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockKey: "home.hero.caption", value: captionDraft }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setError(body?.error || "Save failed. Please try again.");
+        return;
+      }
+      setActiveEditorId(null);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -403,6 +528,7 @@ export function HeroVisualEditor({ caption }: { caption: string }) {
         type="button"
         onClick={() => {
           setCaptionDraft(caption);
+          setError("");
           setActiveEditorId(editorId);
         }}
         aria-label="Edit hero caption"
@@ -421,6 +547,7 @@ export function HeroVisualEditor({ caption }: { caption: string }) {
               className="mt-1 w-full resize-none border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
             />
           </label>
+          {error && <p className="mt-1 text-xs text-[#b8786f]">{error}</p>}
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
