@@ -18,6 +18,10 @@ export default function TributeForm() {
   const [errorMessage, setErrorMessage] = useState("");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
+  function dismissStatus() {
+    setState((current) => (current === "sending" ? current : "idle"));
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const currentForm = event.currentTarget;
@@ -94,25 +98,20 @@ export default function TributeForm() {
     }
   }
 
-  if (state === "sent")
-    return (
-      <p className="mt-7 border-l-2 border-[#c48a3a] px-4 py-3 text-sm leading-6 text-[#536b60]">
-        Thank you. Your tribute has been sent to the family for review.
-      </p>
-    );
-
   return (
     <form onSubmit={submit} className="mt-7 space-y-3">
       <input
         required
         name="name"
         maxLength={80}
+        onChange={dismissStatus}
         className="w-full border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
         placeholder="Your name"
       />
       <textarea
         name="message"
         maxLength={2000}
+        onChange={dismissStatus}
         className="h-28 w-full resize-none border-b border-[#b5a998] bg-transparent px-0 py-3 text-sm outline-none placeholder:text-[#8b9c8b]"
         placeholder="Your memory or message"
       />
@@ -122,7 +121,10 @@ export default function TributeForm() {
           type="file"
           accept={ACCEPT}
           className="sr-only"
-          onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
+          onChange={(event) => {
+            dismissStatus();
+            setAttachmentFile(event.target.files?.[0] || null);
+          }}
         />
       </label>
       <button
@@ -131,6 +133,11 @@ export default function TributeForm() {
       >
         {state === "sending" ? "Sending..." : "Send tribute"}
       </button>
+      {state === "sent" && (
+        <p className="border-l-2 border-[#c48a3a] px-4 py-3 text-sm leading-6 text-[#536b60]">
+          Thank you. Your tribute has been sent to the family for review.
+        </p>
+      )}
       {state === "error" && (
         <p className="text-sm text-[#b8786f]">{errorMessage}</p>
       )}
