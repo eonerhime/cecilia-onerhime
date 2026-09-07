@@ -67,6 +67,14 @@ function getInitials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+// A fixed locale/timeZone, not the runtime default, so the server (Vercel,
+// generic locale) and the visitor's browser (whatever locale/timezone they
+// have) always render the exact same string — otherwise this is a classic
+// hydration-mismatch source (React error #418), which showed up here.
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-GB", { timeZone: "UTC" });
+}
+
 export default function AdminDashboard({
   session,
   initialTributes,
@@ -1105,7 +1113,7 @@ export default function AdminDashboard({
                     dateTime={inquiry.createdAt}
                     className="shrink-0"
                   >
-                    {new Date(inquiry.createdAt).toLocaleDateString()}
+                    {formatDate(inquiry.createdAt)}
                   </time>
                 </div>
                 <a
@@ -1308,7 +1316,7 @@ function ReviewCard({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 text-xs uppercase tracking-[.14em] text-[#536b60]">
         <span className="max-w-full wrap-break-word">{name}</span>
         <time dateTime={date} className="shrink-0">
-          {new Date(date).toLocaleDateString()}
+          {formatDate(date)}
         </time>
       </div>
       {warning && (
