@@ -1,6 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getApprovedMemories, getHeroImages, getMemorialSettings } from "@/lib/memorial";
+import {
+  getApprovedMemories,
+  getHeroImages,
+  getMemorialSettings,
+  getMemorialStats,
+} from "@/lib/memorial";
 import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditableSetting, HeroVisualEditor } from "@/components/editable";
@@ -8,6 +13,8 @@ import AdminNavLink from "@/components/admin-nav-link";
 import HomeMemoriesGrid from "@/components/home-memories-grid";
 import HomeTributesGrid from "@/components/home-tributes-grid";
 import HeroCarousel from "@/components/hero-carousel";
+import Reveal from "@/components/reveal";
+import StatsStrip from "@/components/stats-strip";
 
 const localImages = [
   "/images/WhatsApp Image 2026-09-02 at 19.09.54 (1).jpeg",
@@ -34,11 +41,12 @@ const DEFAULT_EVENTS = [
 ];
 
 export default async function Home() {
-  const [settings, memories, blocks, heroImages] = await Promise.all([
+  const [settings, memories, blocks, heroImages, stats] = await Promise.all([
     getMemorialSettings(),
     getApprovedMemories(),
     getContentBlocks(DEFAULT_TENANT_ID),
     getHeroImages(),
+    getMemorialStats(),
   ]);
 
   const heroCaption = block(blocks, "home.hero.caption", "Forever held\nin our hearts");
@@ -78,35 +86,39 @@ export default async function Home() {
           </Link>
         </EditableSetting>
         <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
-          <a href="/profile" className="hover:text-[#c48a3a]">
+          <a href="/profile" className="link-underline hover:text-[#c48a3a]">
             Her story
           </a>
-          <a href="/gallery" className="hover:text-[#c48a3a]">
+          <a href="/gallery" className="link-underline hover:text-[#c48a3a]">
             Gallery
           </a>
-          <a href="/tributes" className="hover:text-[#c48a3a]">
+          <a href="/tributes" className="link-underline hover:text-[#c48a3a]">
             Tributes
           </a>
           <a
             href="/programme"
-            className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] hover:bg-[#536b60]"
+            className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#536b60] hover:shadow-md"
           >
             Programme
           </a>
-          <AdminNavLink className="hover:text-[#c48a3a]" />
+          <AdminNavLink className="link-underline hover:text-[#c48a3a]" />
         </div>
       </nav>
-      <section className="mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:px-10 lg:pb-32 lg:pt-16">
-        <div>
+      <section className="relative mx-auto grid max-w-7xl gap-10 px-6 pb-20 pt-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:px-10 lg:pb-32 lg:pt-16">
+        <div className="orb-field">
+          <div className="orb h-72 w-72 bg-[#c48a3a] -left-10 -top-10" />
+          <div className="orb orb-delay h-96 w-96 bg-[#d9b5a8] -right-16 top-1/3" />
+        </div>
+        <div className="relative z-10">
           <Editable
             blockKey="home.hero.eyebrow"
             value={block(blocks, "home.hero.eyebrow", "A life beautifully lived")}
           >
-            <p className="rule-mark mb-7 text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
+            <p className="hero-in-1 rule-mark mb-7 text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
               {block(blocks, "home.hero.eyebrow", "A life beautifully lived")}
             </p>
           </Editable>
-          <h1 className="display-font max-w-3xl text-6xl font-semibold leading-[.9] tracking-[-.03em] text-[#1f2d2b] sm:text-8xl">
+          <h1 className="hero-in-2 display-font max-w-3xl text-6xl font-semibold leading-[.9] tracking-[-.03em] text-[#1f2d2b] sm:text-8xl">
             <Editable
               as="span"
               blockKey="home.hero.prefix"
@@ -129,7 +141,7 @@ export default async function Home() {
             )}
             multiline
           >
-            <p className="mt-8 max-w-lg text-base leading-7 text-[#536b60]">
+            <p className="hero-in-3 mt-8 max-w-lg text-base leading-7 text-[#536b60]">
               {block(
                 blocks,
                 "home.hero.intro",
@@ -137,14 +149,14 @@ export default async function Home() {
               )}
             </p>
           </Editable>
-          <div className="mt-9 flex flex-wrap gap-3">
+          <div className="hero-in-4 mt-9 flex flex-wrap gap-3">
             <Editable
               blockKey="home.hero.cta1"
               value={block(blocks, "home.hero.cta1", "Remember her life")}
             >
               <a
                 href="/profile"
-                className="rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold text-[#1f2d2b] transition-transform hover:-translate-y-1"
+                className="rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold text-[#1f2d2b] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#c48a3a]/30"
               >
                 {block(blocks, "home.hero.cta1", "Remember her life")}{" "}
                 <span aria-hidden="true">→</span>
@@ -156,14 +168,14 @@ export default async function Home() {
             >
               <a
                 href="/tributes"
-                className="rounded-full border border-[#b5a998] px-6 py-3 text-sm font-semibold text-[#1f2d2b] hover:border-[#1f2d2b]"
+                className="rounded-full border border-[#b5a998] px-6 py-3 text-sm font-semibold text-[#1f2d2b] transition-all duration-300 hover:-translate-y-1 hover:border-[#1f2d2b] hover:shadow-lg"
               >
                 {block(blocks, "home.hero.cta2", "Share a tribute")}
               </a>
             </Editable>
           </div>
         </div>
-        <div className="relative mx-auto w-full max-w-md lg:justify-self-end">
+        <div className="relative z-10 mx-auto w-full max-w-md lg:justify-self-end">
           <div
             className={`${heroImages.length ? "relative overflow-hidden bg-[#536b60]" : "photo-placeholder"} aspect-[4/5] rounded-[48%_48%_4%_4%] shadow-[18px_20px_0_#d8cec0]`}
             aria-label={`Portrait of ${settings.displayName}`}
@@ -185,9 +197,13 @@ export default async function Home() {
           <HeroVisualEditor caption={heroCaption} />
         </div>
       </section>
-      <section className="border-y border-[#d8cec0] bg-[#536b60] text-[#fbf8f2]">
-        <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[.8fr_1.2fr] lg:px-10">
-          <div>
+      <section className="relative overflow-hidden border-y border-[#d8cec0] bg-[#536b60] text-[#fbf8f2]">
+        <div className="orb-field">
+          <div className="orb h-80 w-80 bg-[#1f2d2b] -left-16 -top-16" />
+          <div className="orb orb-delay h-64 w-64 bg-[#c48a3a] right-0 bottom-0" />
+        </div>
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-6 py-12 lg:grid-cols-[.8fr_1.2fr] lg:px-10">
+          <Reveal>
             <Editable
               blockKey="home.farewell.eyebrow"
               value={block(blocks, "home.farewell.eyebrow", "The farewell")}
@@ -206,9 +222,9 @@ export default async function Home() {
                 ))}
               </h2>
             </Editable>
-          </div>
+          </Reveal>
           <div className="grid gap-5 sm:grid-cols-3">
-            {DEFAULT_EVENTS.map((event) => {
+            {DEFAULT_EVENTS.map((event, eventIndex) => {
               const title = block(
                 blocks,
                 `home.farewell.event.${event.number}.title`,
@@ -220,14 +236,19 @@ export default async function Home() {
                 event.description,
               );
               return (
-                <div key={event.number} className="border-t border-[#91a397] pt-4">
+                <Reveal
+                  key={event.number}
+                  as="div"
+                  delayMs={eventIndex * 120}
+                  className="border-t border-[#91a397] pt-4"
+                >
                   <span className="text-xs text-[#e4bb72]">{event.number}</span>
                   <Editable
                     blockKey={`home.farewell.event.${event.number}.title`}
                     value={title}
                   >
                     <a href="/programme" className="group block">
-                      <h3 className="display-font mt-5 text-3xl group-hover:text-[#e4bb72]">
+                      <h3 className="display-font mt-5 text-3xl transition-colors group-hover:text-[#e4bb72]">
                         {title}
                       </h3>
                     </a>
@@ -241,14 +262,14 @@ export default async function Home() {
                       {description}
                     </p>
                   </Editable>
-                </div>
+                </Reveal>
               );
             })}
           </div>
         </div>
       </section>
       <section className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[.9fr_1.1fr] lg:px-10">
-        <div>
+        <Reveal>
           <Editable
             blockKey="home.gathering.eyebrow"
             value={block(blocks, "home.gathering.eyebrow", "A gathering place")}
@@ -284,11 +305,11 @@ export default async function Home() {
               )}
             </p>
           </Editable>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        </Reveal>
+        <Reveal delayMs={120} className="grid gap-4 sm:grid-cols-2">
           <a
             href="/gallery"
-            className="group photo-placeholder flex min-h-64 items-end rounded-sm p-6 text-[#fbf8f2]"
+            className="group photo-placeholder flex min-h-64 items-end rounded-sm p-6 text-[#fbf8f2] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
           >
             <div>
               <Editable
@@ -307,7 +328,7 @@ export default async function Home() {
           </a>
           <a
             href="/tributes"
-            className="flex min-h-64 flex-col justify-between rounded-sm bg-[#d9b5a8] p-6 text-[#1f2d2b] hover:bg-[#cda095]"
+            className="group flex min-h-64 flex-col justify-between rounded-sm bg-[#d9b5a8] p-6 text-[#1f2d2b] transition-all duration-300 hover:-translate-y-1 hover:bg-[#cda095] hover:shadow-xl"
           >
             <Editable
               blockKey="home.gathering.tributesLabel"
@@ -318,14 +339,19 @@ export default async function Home() {
               </p>
             </Editable>
             <h3 className="display-font text-4xl">
-              Tributes <span>↗</span>
+              Tributes <span className="inline-block transition-transform group-hover:translate-x-1">↗</span>
             </h3>
           </a>
-        </div>
+        </Reveal>
       </section>
+      <StatsStrip
+        tributeCount={stats.tributeCount}
+        mediaCount={stats.mediaCount}
+        contributorCount={stats.contributorCount}
+      />
       <section className="border-y border-[#d8cec0] bg-[#fbf8f2]">
         <div className="mx-auto max-w-7xl px-6 py-20 lg:px-10">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+          <Reveal as="div" className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
               <Editable
                 blockKey="home.shared.eyebrow"
@@ -348,11 +374,11 @@ export default async function Home() {
             </div>
             <Link
               href="/gallery"
-              className="text-sm font-semibold text-[#536b60] hover:text-[#c48a3a]"
+              className="link-underline text-sm font-semibold text-[#536b60] hover:text-[#c48a3a]"
             >
               Visit the gallery <span aria-hidden="true">↗</span>
             </Link>
-          </div>
+          </Reveal>
           <HomeMemoriesGrid
             media={
               memories.media.length
@@ -400,13 +426,13 @@ export default async function Home() {
           </p>
         </Editable>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Link href="/privacy" className="hover:text-[#c48a3a]">
+          <Link href="/privacy" className="link-underline hover:text-[#c48a3a]">
             Privacy
           </Link>
-          <Link href="/terms" className="hover:text-[#c48a3a]">
+          <Link href="/terms" className="link-underline hover:text-[#c48a3a]">
             Terms
           </Link>
-          <Link href="/admin" className="hover:text-[#c48a3a]">
+          <Link href="/admin" className="link-underline hover:text-[#c48a3a]">
             Family sign-in
           </Link>
           <EditableSetting instanceId="footer" field="footerText" settings={settings}>

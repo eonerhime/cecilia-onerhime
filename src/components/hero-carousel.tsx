@@ -32,7 +32,7 @@ export default function HeroCarousel({
           sizes="(min-width: 1024px) 28rem, 90vw"
           priority={position === 0}
           className={`object-cover object-top transition-opacity duration-1000 ${
-            position === index ? "opacity-100" : "opacity-0"
+            position === index ? "opacity-100 ken-burns" : "opacity-0"
           }`}
         />
       ))}

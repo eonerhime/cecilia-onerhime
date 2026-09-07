@@ -189,3 +189,35 @@ export async function getApprovedMemories() {
   ]);
   return { tributes, media };
 }
+
+export type MemorialStats = {
+  tributeCount: number;
+  mediaCount: number;
+  contributorCount: number;
+};
+
+export async function getMemorialStats(): Promise<MemorialStats> {
+  try {
+    const sql = getDatabase();
+    const [row] = await sql`
+      select
+        (select count(*) from tributes where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved') as tribute_count,
+        (select count(*) from media_submissions where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved') as media_count,
+        (
+          select count(distinct lower(trim(name))) from (
+            select name from tributes where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
+            union all
+            select name from media_submissions where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
+          ) as contributors
+        ) as contributor_count
+    `;
+    return {
+      tributeCount: Number(row?.tribute_count ?? 0),
+      mediaCount: Number(row?.media_count ?? 0),
+      contributorCount: Number(row?.contributor_count ?? 0),
+    };
+  } catch (error) {
+    console.error("Memorial stats lookup failed", error);
+    return { tributeCount: 0, mediaCount: 0, contributorCount: 0 };
+  }
+}
