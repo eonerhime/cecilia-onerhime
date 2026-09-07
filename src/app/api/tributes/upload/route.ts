@@ -4,6 +4,11 @@ import { getDatabase } from "@/lib/db";
 import { TRIBUTE_ATTACHMENT_CONTENT_TYPES } from "@/lib/attachment";
 
 const MAX_BYTES = 20 * 1024 * 1024;
+// Higher than the 5/hour cap on the actual tribute submission below it —
+// this only gates the upload step, and every attempt counts toward it
+// (not just failures), so a family member picking the wrong file or
+// attaching a couple of letters shouldn't get locked out.
+const MAX_ATTEMPTS = 20;
 
 function getClientKey(request: Request) {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -56,12 +61,12 @@ export async function POST(request: Request) {
               when admin_rate_limits.window_started < now() - interval '60 minutes' then 1
               else admin_rate_limits.failed_attempts + 1
             end
-          ) >= 5 then now() + interval '15 minutes'
+          ) >= ${MAX_ATTEMPTS} then now() + interval '15 minutes'
           else null
         end
       returning failed_attempts, locked_until
     `;
-    if (attempt?.failed_attempts >= 5) {
+    if (attempt?.failed_attempts >= MAX_ATTEMPTS) {
       const retryAfter = attempt.locked_until
         ? Math.ceil(
             (new Date(attempt.locked_until).getTime() - Date.now()) / 1000,
