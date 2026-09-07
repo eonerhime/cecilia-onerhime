@@ -143,8 +143,9 @@ export default function HomeTributesGrid({ tributes }: { tributes: Tribute[] }) 
                         target="_blank"
                         rel="noreferrer"
                         className="self-center text-xs text-[#536b60] underline underline-offset-2"
+                        title="Downloads a copy of the original file"
                       >
-                        Open in a new tab ↗
+                        Download the original file ⭳
                       </a>
                     </div>
                   );

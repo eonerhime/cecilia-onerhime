@@ -406,8 +406,14 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                           target="_blank"
                           rel="noreferrer"
                           className="self-center text-xs text-[#536b60] underline underline-offset-2"
+                          // Word docs have no native in-browser renderer, so
+                          // unlike the PDF/image links below, this one always
+                          // saves a copy the moment it's clicked, regardless
+                          // of label — say so plainly rather than implying
+                          // it just "opens".
+                          title="Downloads a copy of the original file"
                         >
-                          Open in a new tab ↗
+                          Download the original file ⭳
                         </a>
                       </div>
                     );
