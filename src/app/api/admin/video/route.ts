@@ -2,36 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
 import { requireSession } from "@/lib/admin-auth";
-
-async function detectThumbnail(mediaUrl: string): Promise<string | null> {
-  try {
-    const parsed = new URL(mediaUrl);
-    const host = parsed.hostname.replace(/^www\.|^m\./, "");
-
-    if (host === "youtube.com" || host === "youtu.be") {
-      const id =
-        host === "youtu.be"
-          ? parsed.pathname.slice(1)
-          : parsed.searchParams.get("v") ||
-            parsed.pathname.match(/\/(?:embed|shorts)\/([^/?]+)/)?.[1];
-      if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-    }
-
-    if (host === "vimeo.com" || host === "player.vimeo.com") {
-      const response = await fetch(
-        `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(mediaUrl)}`,
-      );
-      if (response.ok) {
-        const data = await response.json();
-        if (typeof data.thumbnail_url === "string") return data.thumbnail_url;
-      }
-    }
-  } catch {
-    // Not a recognized host, or the oEmbed lookup failed — fall through and
-    // leave it thumbnail-less; the admin can still upload one manually.
-  }
-  return null;
-}
+import { detectVideoThumbnail } from "@/lib/media-embed";
 
 export async function POST(request: Request) {
   try {
@@ -64,7 +35,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const thumbnailUrl = thumbnailUrlInput || (await detectThumbnail(mediaUrl));
+    const thumbnailUrl = thumbnailUrlInput || (await detectVideoThumbnail(mediaUrl));
 
     const sql = getDatabase();
     await sql`
