@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const message = typeof body.message === "string" ? body.message.trim() : "";
-    const pdfUrl = typeof body.pdfUrl === "string" ? body.pdfUrl.trim() : "";
+    const attachmentUrl = typeof body.attachmentUrl === "string" ? body.attachmentUrl.trim() : "";
 
     if (!name || name.length > 80 || message.length > 2000) {
       return NextResponse.json(
@@ -46,15 +46,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (!message && !pdfUrl) {
+    if (!message && !attachmentUrl) {
       return NextResponse.json(
         { error: "Please write a message or attach a letter." },
         { status: 400 },
       );
     }
-    if (pdfUrl.length > 1000) {
+    if (attachmentUrl.length > 1000) {
       return NextResponse.json(
-        { error: "That letter link is too long." },
+        { error: "That attachment link is too long." },
         { status: 400 },
       );
     }
@@ -115,8 +115,8 @@ export async function POST(request: Request) {
     }
 
     await sql`
-      insert into tributes (tenant_id, name, message, pdf_url)
-      values (${DEFAULT_TENANT_ID}, ${name}, ${message}, ${pdfUrl || null})
+      insert into tributes (tenant_id, name, message, attachment_url)
+      values (${DEFAULT_TENANT_ID}, ${name}, ${message}, ${attachmentUrl || null})
     `;
     return NextResponse.json({ ok: true });
   } catch (error) {

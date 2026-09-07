@@ -3,12 +3,15 @@
 import { FormEvent, useState } from "react";
 import { upload } from "@vercel/blob/client";
 
+const ACCEPT =
+  "application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*";
+
 export default function TributeForm() {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
   );
   const [errorMessage, setErrorMessage] = useState("");
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -16,7 +19,7 @@ export default function TributeForm() {
     const form = new FormData(currentForm);
     const message = typeof form.get("message") === "string" ? (form.get("message") as string).trim() : "";
 
-    if (!message && !pdfFile) {
+    if (!message && !attachmentFile) {
       setErrorMessage("Please write a message or attach a letter.");
       setState("error");
       return;
@@ -24,17 +27,21 @@ export default function TributeForm() {
 
     setState("sending");
 
-    let pdfUrl = "";
-    if (pdfFile) {
+    let attachmentUrl = "";
+    if (attachmentFile) {
       try {
         // Uploaded directly to Blob (bypassing our own API route as a
         // request body) since Vercel serverless functions cap the body at
         // ~4.5MB, well under what a scanned letter can be.
-        const blob = await upload(`memorial/tributes/${crypto.randomUUID()}-${pdfFile.name}`, pdfFile, {
-          access: "public",
-          handleUploadUrl: "/api/tributes/upload",
-        });
-        pdfUrl = blob.url;
+        const blob = await upload(
+          `memorial/tributes/${crypto.randomUUID()}-${attachmentFile.name}`,
+          attachmentFile,
+          {
+            access: "public",
+            handleUploadUrl: "/api/tributes/upload",
+          },
+        );
+        attachmentUrl = blob.url;
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Unable to upload that file.");
         setState("error");
@@ -48,13 +55,13 @@ export default function TributeForm() {
       body: JSON.stringify({
         name: form.get("name"),
         message,
-        pdfUrl,
+        attachmentUrl,
       }),
     });
     if (response.ok) {
       setState("sent");
       currentForm.reset();
-      setPdfFile(null);
+      setAttachmentFile(null);
     } else {
       const body = await response.json().catch(() => null);
       setErrorMessage(
@@ -89,12 +96,12 @@ export default function TributeForm() {
         placeholder="Your memory or message"
       />
       <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-3 text-center text-sm font-semibold text-[#1f2d2b]">
-        {pdfFile ? pdfFile.name : "Or attach a letter (PDF)"}
+        {attachmentFile ? attachmentFile.name : "Or attach a letter (PDF, Word, or photo)"}
         <input
           type="file"
-          accept="application/pdf"
+          accept={ACCEPT}
           className="sr-only"
-          onChange={(event) => setPdfFile(event.target.files?.[0] || null)}
+          onChange={(event) => setAttachmentFile(event.target.files?.[0] || null)}
         />
       </label>
       <button

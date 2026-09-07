@@ -2,9 +2,14 @@
 
 import { useEffect, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 import type { ApprovedTribute } from "@/lib/memorial";
+import { getAttachmentKind } from "@/lib/attachment";
+
+const ATTACHMENT_ACCEPT =
+  "application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*";
 
 function PencilIcon() {
   return (
@@ -22,6 +27,13 @@ function LetterIcon({ className }: { className?: string }) {
   );
 }
 
+function attachmentLabel(kind: ReturnType<typeof getAttachmentKind>) {
+  if (kind === "image") return "View the attached photo";
+  if (kind === "doc") return "Download the letter (Word) ↓";
+  if (kind === "pdf") return "Read the full letter (PDF) ↗";
+  return "Open the attachment ↗";
+}
+
 export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[] }) {
   const router = useRouter();
   const { canEdit, editMode } = useEditMode();
@@ -37,10 +49,10 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   const [active, setActive] = useState<ApprovedTribute | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
-  const [draftPdfUrl, setDraftPdfUrl] = useState("");
+  const [draftAttachmentUrl, setDraftAttachmentUrl] = useState("");
   const [saving, setSaving] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [pdfUploadError, setPdfUploadError] = useState("");
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentUploadError, setAttachmentUploadError] = useState("");
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -48,8 +60,8 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   function open(tribute: ApprovedTribute) {
     setDraftName(tribute.name);
     setDraftMessage(tribute.message);
-    setDraftPdfUrl(tribute.pdfUrl || "");
-    setPdfUploadError("");
+    setDraftAttachmentUrl(tribute.attachmentUrl || "");
+    setAttachmentUploadError("");
     setActive(tribute);
   }
 
@@ -57,20 +69,20 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
     setActive(null);
   }
 
-  async function uploadPdf(file: File | null) {
+  async function uploadAttachment(file: File | null) {
     if (!file) return;
-    setUploadingPdf(true);
-    setPdfUploadError("");
+    setUploadingAttachment(true);
+    setAttachmentUploadError("");
     try {
       const blob = await upload(`memorial/tributes/${crypto.randomUUID()}-${file.name}`, file, {
         access: "public",
-        handleUploadUrl: "/api/admin/upload-pdf",
+        handleUploadUrl: "/api/admin/tribute-attachment",
       });
-      setDraftPdfUrl(blob.url);
+      setDraftAttachmentUrl(blob.url);
     } catch (error) {
-      setPdfUploadError(error instanceof Error ? error.message : "Upload failed.");
+      setAttachmentUploadError(error instanceof Error ? error.message : "Upload failed.");
     } finally {
-      setUploadingPdf(false);
+      setUploadingAttachment(false);
     }
   }
 
@@ -84,7 +96,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
         id: active.id,
         name: draftName,
         message: draftMessage,
-        pdfUrl: draftPdfUrl,
+        attachmentUrl: draftAttachmentUrl,
       }),
     });
     setSaving(false);
@@ -92,7 +104,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
     setTributesState((current) =>
       current.map((tribute) =>
         tribute.id === active.id
-          ? { ...tribute, name: draftName, message: draftMessage, pdfUrl: draftPdfUrl || null }
+          ? { ...tribute, name: draftName, message: draftMessage, attachmentUrl: draftAttachmentUrl || null }
           : tribute,
       ),
     );
@@ -173,7 +185,9 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
           reorderable && tributesState.length > 1 ? "mt-4" : "mt-12"
         }`}
       >
-        {tributesState.map((tribute) => (
+        {tributesState.map((tribute) => {
+          const kind = tribute.attachmentUrl ? getAttachmentKind(tribute.attachmentUrl) : null;
+          return (
           <div key={tribute.id} className="relative">
             <button
               type="button"
@@ -204,6 +218,15 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                 <p className="display-font line-clamp-6 text-2xl leading-tight">
                   “{tribute.message}”
                 </p>
+              ) : kind === "image" && tribute.attachmentUrl ? (
+                <Image
+                  src={tribute.attachmentUrl}
+                  alt=""
+                  fill
+                  sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                  className="object-cover object-top"
+                  unoptimized
+                />
               ) : (
                 <div className="flex flex-col items-start gap-2 text-[#536b60]">
                   <LetterIcon className="h-8 w-8" />
@@ -212,7 +235,13 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                   </p>
                 </div>
               )}
-              <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
+              <cite
+                className={
+                  kind === "image"
+                    ? "absolute inset-x-0 bottom-0 z-10 truncate bg-[#1f2d2b]/80 px-4 py-3 text-xs not-italic uppercase tracking-[.2em] text-[#fbf8f2]"
+                    : "mt-4 block truncate text-xs not-italic uppercase tracking-[.2em] text-[#536b60]"
+                }
+              >
                 {tribute.name}
               </cite>
             </button>
@@ -232,7 +261,8 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {active && (
@@ -278,41 +308,41 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                 </label>
                 <div className="mt-6">
                   <span className="block text-xs font-semibold uppercase tracking-[.2em] text-[#536b60]">
-                    Letter (PDF)
+                    Letter (PDF, Word, or photo)
                   </span>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    {draftPdfUrl && (
+                    {draftAttachmentUrl && (
                       <a
-                        href={draftPdfUrl}
+                        href={draftAttachmentUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="text-sm text-[#536b60] underline underline-offset-2"
                       >
-                        View current letter ↗
+                        View current attachment ↗
                       </a>
                     )}
                     <label className="cursor-pointer rounded-full border border-[#b5a998] px-3 py-1.5 text-xs font-semibold text-[#1f2d2b]">
-                      {uploadingPdf ? "Uploading..." : draftPdfUrl ? "Replace" : "Attach a letter"}
+                      {uploadingAttachment ? "Uploading..." : draftAttachmentUrl ? "Replace" : "Attach a letter"}
                       <input
                         type="file"
-                        accept="application/pdf"
+                        accept={ATTACHMENT_ACCEPT}
                         className="sr-only"
-                        disabled={uploadingPdf}
-                        onChange={(event) => uploadPdf(event.target.files?.[0] || null)}
+                        disabled={uploadingAttachment}
+                        onChange={(event) => uploadAttachment(event.target.files?.[0] || null)}
                       />
                     </label>
-                    {draftPdfUrl && (
+                    {draftAttachmentUrl && (
                       <button
                         type="button"
-                        onClick={() => setDraftPdfUrl("")}
+                        onClick={() => setDraftAttachmentUrl("")}
                         className="text-xs font-semibold text-[#b8786f]"
                       >
                         Remove
                       </button>
                     )}
                   </div>
-                  {pdfUploadError && (
-                    <p className="mt-2 text-xs text-[#b8786f]">{pdfUploadError}</p>
+                  {attachmentUploadError && (
+                    <p className="mt-2 text-xs text-[#b8786f]">{attachmentUploadError}</p>
                   )}
                 </div>
                 <div className="mt-6 flex justify-end gap-2">
@@ -326,7 +356,12 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                   <button
                     type="button"
                     onClick={save}
-                    disabled={saving || uploadingPdf || !draftName.trim() || (!draftMessage.trim() && !draftPdfUrl)}
+                    disabled={
+                      saving ||
+                      uploadingAttachment ||
+                      !draftName.trim() ||
+                      (!draftMessage.trim() && !draftAttachmentUrl)
+                    }
                     className="rounded-full bg-[#1f2d2b] px-4 py-2 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
                   >
                     {saving ? "Saving..." : "Save"}
@@ -344,17 +379,30 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
               </>
             ) : (
               <>
-                <div className="flex flex-col items-center gap-4 py-6 text-center">
-                  <LetterIcon className="h-12 w-12 text-[#536b60]" />
-                  <a
-                    href={active.pdfUrl ?? undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-[#1f2d2b] px-6 py-3 text-sm font-semibold text-[#fbf8f2]"
-                  >
-                    Read the full letter (PDF) ↗
-                  </a>
-                </div>
+                {active.attachmentUrl && getAttachmentKind(active.attachmentUrl) === "image" ? (
+                  <div className="relative h-[65vh] w-full">
+                    <Image
+                      src={active.attachmentUrl}
+                      alt={`A letter from ${active.name}`}
+                      fill
+                      sizes="90vw"
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4 py-6 text-center">
+                    <LetterIcon className="h-12 w-12 text-[#536b60]" />
+                    <a
+                      href={active.attachmentUrl ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full bg-[#1f2d2b] px-6 py-3 text-sm font-semibold text-[#fbf8f2]"
+                    >
+                      {attachmentLabel(getAttachmentKind(active.attachmentUrl ?? ""))}
+                    </a>
+                  </div>
+                )}
                 <cite className="mt-8 block text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
                   {active.name}
                 </cite>

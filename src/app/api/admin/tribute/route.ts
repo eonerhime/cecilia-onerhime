@@ -14,7 +14,7 @@ export async function PATCH(request: Request) {
     const id = typeof body.id === "string" ? body.id : "";
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const message = typeof body.message === "string" ? body.message.trim() : "";
-    const pdfUrl = typeof body.pdfUrl === "string" ? body.pdfUrl.trim() : "";
+    const attachmentUrl = typeof body.attachmentUrl === "string" ? body.attachmentUrl.trim() : "";
 
     if (!id || !name || name.length > 80 || message.length > 20000) {
       return NextResponse.json(
@@ -22,32 +22,36 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    if (!message && !pdfUrl) {
+    if (!message && !attachmentUrl) {
       return NextResponse.json(
-        { error: "Please provide a message or a letter PDF." },
+        { error: "Please provide a message or an attachment." },
         { status: 400 },
       );
     }
 
     const sql = getDatabase();
     const [previous] = await sql`
-      select pdf_url from tributes where id = ${id} and tenant_id = ${session.tenantId}
+      select attachment_url from tributes where id = ${id} and tenant_id = ${session.tenantId}
     `;
     await sql`
-      update tributes set name = ${name}, message = ${message}, pdf_url = ${pdfUrl || null}
+      update tributes set name = ${name}, message = ${message}, attachment_url = ${attachmentUrl || null}
       where id = ${id} and tenant_id = ${session.tenantId}
     `;
 
-    const previousPdfUrl = previous?.pdf_url as string | null | undefined;
-    if (previousPdfUrl && previousPdfUrl !== pdfUrl && isBlobUrl(previousPdfUrl)) {
-      await del(previousPdfUrl).catch((error) => {
-        console.error("Blob cleanup after tribute PDF replace failed", error);
+    const previousAttachmentUrl = previous?.attachment_url as string | null | undefined;
+    if (
+      previousAttachmentUrl &&
+      previousAttachmentUrl !== attachmentUrl &&
+      isBlobUrl(previousAttachmentUrl)
+    ) {
+      await del(previousAttachmentUrl).catch((error) => {
+        console.error("Blob cleanup after tribute attachment replace failed", error);
       });
     }
 
     revalidatePath("/tributes");
     revalidatePath("/", "layout");
-    return NextResponse.json({ data: { id, name, message, pdfUrl: pdfUrl || null } });
+    return NextResponse.json({ data: { id, name, message, attachmentUrl: attachmentUrl || null } });
   } catch (error) {
     console.error("Tribute edit failed", error);
     return NextResponse.json(
@@ -71,14 +75,14 @@ export async function DELETE(request: Request) {
     const sql = getDatabase();
     const [item] = await sql`
       delete from tributes where id = ${id} and tenant_id = ${session.tenantId}
-      returning pdf_url
+      returning attachment_url
     `;
     if (!item) {
       return NextResponse.json({ error: "That tribute no longer exists." }, { status: 404 });
     }
 
-    if (item.pdf_url && isBlobUrl(item.pdf_url)) {
-      await del(item.pdf_url).catch((error) => {
+    if (item.attachment_url && isBlobUrl(item.attachment_url)) {
+      await del(item.attachment_url).catch((error) => {
         console.error("Blob cleanup after tribute delete failed", error);
       });
     }

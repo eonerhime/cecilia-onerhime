@@ -1,6 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
+import { TRIBUTE_ATTACHMENT_CONTENT_TYPES } from "@/lib/attachment";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -10,7 +11,7 @@ function getClientKey(request: Request) {
     forwardedFor?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  return `tribute-pdf:${clientIp}`;
+  return `tribute-attachment:${clientIp}`;
 }
 
 export async function POST(request: Request) {
@@ -80,14 +81,14 @@ export async function POST(request: Request) {
       body,
       request,
       onBeforeGenerateToken: async () => ({
-        allowedContentTypes: ["application/pdf"],
+        allowedContentTypes: TRIBUTE_ATTACHMENT_CONTENT_TYPES,
         maximumSizeInBytes: MAX_BYTES,
         addRandomSuffix: true,
       }),
     });
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Tribute PDF upload failed", error);
+    console.error("Tribute attachment upload failed", error);
     return NextResponse.json(
       { error: "Unable to upload that file right now." },
       { status: 400 },
