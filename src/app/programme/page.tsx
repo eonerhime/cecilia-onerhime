@@ -3,6 +3,7 @@ import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditablePdfLink } from "@/components/editable";
 import SiteNav from "@/components/site-nav";
+import Reveal from "@/components/reveal";
 
 const DEFAULT_EVENTS = [
   {
@@ -56,29 +57,33 @@ export default async function Programme() {
     <main className="paper-grain min-h-screen">
       <SiteNav displayName={settings.displayName} heroImageUrl={settings.heroImageUrl} current="programme" />
       <section className="mx-auto max-w-5xl px-6 py-20 lg:px-10">
-        <Editable
-          blockKey="programme.eyebrow"
-          value={block(blocks, "programme.eyebrow", "The farewell")}
-        >
-          <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
-            {block(blocks, "programme.eyebrow", "The farewell")}
-          </p>
-        </Editable>
-        <Editable blockKey="programme.heading" value={heading} multiline>
-          <h1 className="display-font mt-6 text-7xl leading-[.85]">
-            {heading.split("\n").map((line, index) => (
-              <span key={index} className={index === 1 ? "text-[#536b60]" : undefined}>
-                {index > 0 && <br />}
-                {line}
-              </span>
-            ))}
-          </h1>
-        </Editable>
+        <Reveal as="div">
+          <Editable
+            blockKey="programme.eyebrow"
+            value={block(blocks, "programme.eyebrow", "The farewell")}
+          >
+            <p className="rule-mark text-xs font-bold uppercase tracking-[.25em] text-[#b8786f]">
+              {block(blocks, "programme.eyebrow", "The farewell")}
+            </p>
+          </Editable>
+          <Editable blockKey="programme.heading" value={heading} multiline>
+            <h1 className="display-font mt-6 text-7xl leading-[.85]">
+              {heading.split("\n").map((line, index) => (
+                <span key={index} className={index === 1 ? "text-[#536b60]" : undefined}>
+                  {index > 0 && <br />}
+                  {line}
+                </span>
+              ))}
+            </h1>
+          </Editable>
+        </Reveal>
         <div className="mt-12 divide-y divide-[#d8cec0] border-y border-[#d8cec0]">
           {events.map((event, index) => (
-            <article
-              className="grid gap-4 py-7 md:grid-cols-[80px_1fr_1fr]"
+            <Reveal
+              as="article"
               key={event.number}
+              delayMs={index * 100}
+              className="grid gap-4 py-7 md:grid-cols-[80px_1fr_1fr]"
             >
               <span className="text-sm text-[#c48a3a]">0{index + 1}</span>
               <Editable
@@ -111,10 +116,10 @@ export default async function Programme() {
                   />
                 </div>
               </div>
-            </article>
+            </Reveal>
           ))}
         </div>
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 bg-[#d9b5a8] p-6">
+        <Reveal className="mt-10 flex flex-wrap items-center justify-between gap-4 bg-[#d9b5a8] p-6">
           <div>
             <Editable blockKey="programme.full.heading" value={fullProgrammeHeading}>
               <h2 className="display-font text-3xl">{fullProgrammeHeading}</h2>
@@ -131,7 +136,7 @@ export default async function Programme() {
                   href={event.pdfUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full bg-[#1f2d2b] px-5 py-3 text-sm font-semibold text-[#fbf8f2]"
+                  className="rounded-full bg-[#1f2d2b] px-5 py-3 text-sm font-semibold text-[#fbf8f2] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   {event.title} ↗
                 </a>
@@ -142,7 +147,7 @@ export default async function Programme() {
               </p>
             )}
           </div>
-        </div>
+        </Reveal>
       </section>
     </main>
   );

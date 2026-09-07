@@ -43,7 +43,7 @@ export default function SiteNav({
           </span>
         )}
       </Link>
-      <Link href="/" className="text-sm text-[#536b60] hover:text-[#c48a3a] md:hidden">
+      <Link href="/" className="link-underline text-sm text-[#536b60] hover:text-[#c48a3a] md:hidden">
         ← Home
       </Link>
       <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
@@ -52,17 +52,17 @@ export default function SiteNav({
             <Link
               key={link.key}
               href={link.href}
-              className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] hover:bg-[#536b60]"
+              className="rounded-full bg-[#1f2d2b] px-5 py-3 text-[#fbf8f2] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#536b60] hover:shadow-md"
             >
               {link.label}
             </Link>
           ) : (
-            <Link key={link.key} href={link.href} className="hover:text-[#c48a3a]">
+            <Link key={link.key} href={link.href} className="link-underline hover:text-[#c48a3a]">
               {link.label}
             </Link>
           ),
         )}
-        <AdminNavLink className="hover:text-[#c48a3a]" />
+        <AdminNavLink className="link-underline hover:text-[#c48a3a]" />
       </div>
     </nav>
   );

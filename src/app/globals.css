@@ -157,3 +157,145 @@ body[data-template="bright-celebration"] [class*="rounded-full"] {
 body[data-template="bright-celebration"] .display-font {
   font-weight: 700;
 }
+
+/* Scroll-reveal: sections/cards fade + rise into place as they enter the
+   viewport (see components/reveal.tsx). Visible by default so content
+   never disappears if JS hasn't run yet; the client component adds
+   `.reveal` up front and `.is-visible` once observed. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    transition:
+      opacity 0.7s ease-out,
+      transform 0.7s ease-out;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Hero entrance: a staggered cascade for the above-the-fold "In loving
+   memory of..." text on first paint. Pure CSS (no IntersectionObserver
+   needed, unlike .reveal) since this content is always in view at load —
+   apply `.hero-in` plus a `.hero-in-<n>` stagger step directly in markup. */
+.hero-in-1,
+.hero-in-2,
+.hero-in-3,
+.hero-in-4 {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-in-1,
+  .hero-in-2,
+  .hero-in-3,
+  .hero-in-4 {
+    animation: hero-in 0.8s ease-out both;
+  }
+  .hero-in-1 {
+    animation-delay: 0.05s;
+  }
+  .hero-in-2 {
+    animation-delay: 0.2s;
+  }
+  .hero-in-3 {
+    animation-delay: 0.35s;
+  }
+  .hero-in-4 {
+    animation-delay: 0.5s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-in-1,
+  .hero-in-2,
+  .hero-in-3,
+  .hero-in-4 {
+    opacity: 1;
+  }
+}
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soft drifting light orbs — ambient background motion for the hero and
+   farewell sections. Purely decorative, so they're inert to pointer events
+   and skip animating entirely under reduced motion. */
+.orb-field {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  opacity: 0.35;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .orb {
+    animation: orb-drift 22s ease-in-out infinite;
+  }
+  .orb-delay {
+    animation-delay: -9s;
+  }
+}
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(4%, -6%) scale(1.12);
+  }
+}
+
+/* Slow "Ken Burns" zoom for the active hero carousel photo. */
+@media (prefers-reduced-motion: no-preference) {
+  .ken-burns {
+    animation: ken-burns 9s ease-out forwards;
+  }
+}
+@keyframes ken-burns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+/* Animated underline for inline text links (nav, footer). */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transition: right 0.25s ease-out;
+}
+.link-underline:hover::after {
+  right: 0;
+}

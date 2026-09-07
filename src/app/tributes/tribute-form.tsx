@@ -129,7 +129,7 @@ export default function TributeForm() {
       </label>
       <button
         disabled={state === "sending"}
-        className="rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold disabled:opacity-60"
+        className="rounded-full bg-[#c48a3a] px-6 py-3 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
       >
         {state === "sending" ? "Sending..." : "Send tribute"}
       </button>

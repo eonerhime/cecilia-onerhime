@@ -59,7 +59,7 @@ function CoverTile({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`group relative aspect-square overflow-hidden bg-[#536b60] text-left ${
+      className={`group relative aspect-square overflow-hidden bg-[#536b60] text-left transition-shadow duration-300 hover:shadow-xl ${
         draggable ? "cursor-grab active:cursor-grabbing" : ""
       } ${dimmed ? "opacity-40" : ""}`}
     >
@@ -334,7 +334,7 @@ export default function GalleryGrid({
               if (dragId) return;
               setActiveIndex(images.findIndex((image) => image.id === item.id));
             }}
-            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left ${
+            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left transition-shadow duration-300 hover:shadow-xl ${
               reorderable ? "cursor-grab active:cursor-grabbing" : ""
             } ${dragId === item.id ? "opacity-40" : ""}`}
           >
@@ -368,7 +368,7 @@ export default function GalleryGrid({
               if (dragId) return;
               setActiveVideo(item);
             }}
-            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left ${
+            className={`group relative aspect-square w-full overflow-hidden bg-[#536b60] text-left transition-shadow duration-300 hover:shadow-xl ${
               item.thumbnailUrl ? "" : "flex flex-col items-center justify-center gap-2 p-6 text-center text-[#fbf8f2] hover:bg-[#1f2d2b]"
             } ${reorderable ? "cursor-grab active:cursor-grabbing" : ""} ${dragId === item.id ? "opacity-40" : ""}`}
           >
