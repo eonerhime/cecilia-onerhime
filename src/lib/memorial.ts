@@ -49,6 +49,11 @@ export type Album = {
   hidden: boolean;
 };
 
+export type HeroImage = {
+  id: string;
+  imageUrl: string;
+};
+
 export const getMemorialSettings = cache(async () => {
   try {
     const sql = getDatabase();
@@ -155,6 +160,24 @@ export async function getAlbums({ includeHidden = false } = {}): Promise<Album[]
     })) as Album[];
   } catch (error) {
     console.error("Albums lookup failed", error);
+    return [];
+  }
+}
+
+export async function getHeroImages(): Promise<HeroImage[]> {
+  try {
+    const sql = getDatabase();
+    const rows = await sql`
+      select id, image_url from hero_images
+      where tenant_id = ${DEFAULT_TENANT_ID}
+      order by sort_order asc, created_at asc
+    `;
+    return rows.map(({ image_url, ...row }) => ({
+      ...row,
+      imageUrl: image_url,
+    })) as HeroImage[];
+  } catch (error) {
+    console.error("Hero images lookup failed", error);
     return [];
   }
 }

@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import type { Role, Session } from "@/lib/session";
 import { ROLE_DESCRIPTIONS, hasRole } from "@/lib/roles";
-import type { Album, MusicAutoplay } from "@/lib/memorial";
+import type { Album, HeroImage, MusicAutoplay } from "@/lib/memorial";
 import type {
   ContactInquiry,
   PendingInvite,
@@ -45,6 +46,7 @@ type Props = {
   initialMembers: TenantMember[];
   initialInvites: PendingInvite[];
   initialAlbums: Album[];
+  initialHeroImages: HeroImage[];
 };
 
 const colorLabels: Array<[keyof MemorialSettings["colors"], string]> = [
@@ -84,6 +86,7 @@ export default function AdminDashboard({
   initialMembers,
   initialInvites,
   initialAlbums,
+  initialHeroImages,
 }: Props) {
   const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
@@ -101,6 +104,8 @@ export default function AdminDashboard({
   const [videoThumbnailFile, setVideoThumbnailFile] = useState<File | null>(null);
   const [addingVideo, setAddingVideo] = useState(false);
   const [albums, setAlbums] = useState(initialAlbums);
+  const [heroImages, setHeroImages] = useState(initialHeroImages);
+  const [uploadingHeroCarousel, setUploadingHeroCarousel] = useState(false);
   const [selectedAlbumId, setSelectedAlbumId] = useState("");
   const [newAlbumName, setNewAlbumName] = useState("");
   const [albumBusy, setAlbumBusy] = useState(false);
@@ -156,6 +161,50 @@ export default function AdminDashboard({
       setNotice("Hero image uploaded and saved.");
       router.refresh();
     }
+  }
+
+  async function addHeroImage(file: File | null) {
+    if (!file) return;
+    setUploadingHeroCarousel(true);
+    setError("");
+    setNotice("");
+    let url: string;
+    try {
+      const blob = await upload(`memorial/hero/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-image",
+      });
+      url = blob.url;
+    } catch (error) {
+      setUploadingHeroCarousel(false);
+      setError(error instanceof Error ? error.message : "Upload failed.");
+      return;
+    }
+    const response = await fetch("/api/admin/hero-images", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: url }),
+    });
+    setUploadingHeroCarousel(false);
+    if (!response.ok) {
+      setError("Uploaded, but adding it to the carousel failed.");
+      return;
+    }
+    const result = await response.json();
+    setHeroImages((current) => [...current, result.data]);
+    setNotice("Photo added to the hero carousel.");
+    router.refresh();
+  }
+
+  async function deleteHeroImage(id: string) {
+    if (!window.confirm("Remove this photo from the hero carousel?")) return;
+    setHeroImages((current) => current.filter((image) => image.id !== id));
+    await fetch("/api/admin/hero-images", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    router.refresh();
   }
 
   async function uploadMusic(file: File | null) {
@@ -640,7 +689,7 @@ export default function AdminDashboard({
         </label>
         <div className="mt-6">
           <label className="block text-sm font-semibold text-[#1f2d2b]">
-            Hero image URL
+            Site logo (shown top-left on every page)
             <input
               type="url"
               value={settings.heroImageUrl}
@@ -661,6 +710,12 @@ export default function AdminDashboard({
             />
           </label>
         </div>
+        <HeroImagesManager
+          images={heroImages}
+          uploading={uploadingHeroCarousel}
+          onUpload={addHeroImage}
+          onDelete={deleteHeroImage}
+        />
         <div className="mt-6 border-t border-[#d8cec0] pt-6">
           <p className="text-sm font-semibold text-[#1f2d2b]">
             Background music
@@ -772,7 +827,7 @@ export default function AdminDashboard({
           </div>
           <div className="mt-6">
             <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
-              {uploadingHero ? "Uploading..." : "Upload a hero photo"}
+              {uploadingHero ? "Uploading..." : "Upload a site logo photo"}
               <input
                 type="file"
                 accept="image/*"
@@ -781,6 +836,12 @@ export default function AdminDashboard({
               />
             </label>
           </div>
+          <HeroImagesManager
+            images={heroImages}
+            uploading={uploadingHeroCarousel}
+            onUpload={addHeroImage}
+            onDelete={deleteHeroImage}
+          />
           <div className="mt-4">
             <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
               {uploadingMusic ? "Uploading..." : "Upload a music track"}
@@ -1268,6 +1329,65 @@ export default function AdminDashboard({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function HeroImagesManager({
+  images,
+  uploading,
+  onUpload,
+  onDelete,
+}: {
+  images: HeroImage[];
+  uploading: boolean;
+  onUpload: (file: File | null) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="mt-6 border-t border-[#d8cec0] pt-6">
+      <p className="text-sm font-semibold text-[#1f2d2b]">Hero carousel</p>
+      <p className="mt-1 text-xs leading-5 text-[#536b60]">
+        Photos shown in rotation on the homepage. Add as many as you like;
+        remove any you don&apos;t want anymore.
+      </p>
+      {images.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
+          {images.map((image) => (
+            <div
+              key={image.id}
+              className="group relative aspect-square overflow-hidden rounded border border-[#d8cec0] bg-[#536b60]"
+            >
+              <Image
+                src={image.imageUrl}
+                alt=""
+                fill
+                sizes="150px"
+                className="object-cover object-top"
+              />
+              <button
+                type="button"
+                onClick={() => onDelete(image.id)}
+                aria-label="Remove from carousel"
+                className="absolute right-1 top-1 rounded-full bg-[#fbf8f2] p-1 text-[#b8786f] shadow hover:bg-[#b8786f] hover:text-[#fbf8f2]"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                  <path d="M8 2a1 1 0 0 0-1 1v1H4a1 1 0 1 0 0 2h.1l.9 10.1A2 2 0 0 0 6.99 18h6.02a2 2 0 0 0 1.99-1.9L15.9 6h.1a1 1 0 1 0 0-2h-3V3a1 1 0 0 0-1-1H8Zm0 2h4V3H8v1ZM7 8a1 1 0 0 1 2 0v6a1 1 0 1 1-2 0V8Zm4 0a1 1 0 1 1 2 0v6a1 1 0 1 1-2 0V8Z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <label className="mt-4 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
+        {uploading ? "Uploading..." : "Add a photo"}
+        <input
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(event) => onUpload(event.target.files?.[0] || null)}
+        />
+      </label>
     </div>
   );
 }

@@ -375,59 +375,23 @@ export function EditablePdfLink({
  * box (even conditionally) shifts that positioning. This instead anchors to
  * the section's existing `relative` parent, which the caller must provide.
  */
-export function HeroVisualEditor({
-  settings,
-  caption,
-}: {
-  settings: EditableSettings;
-  caption: string;
-}) {
+export function HeroVisualEditor({ caption }: { caption: string }) {
   const router = useRouter();
   const { canEdit, editMode, activeEditorId, setActiveEditorId } = useEditMode();
   const editorId = "hero-visual";
   const editing = activeEditorId === editorId;
-  const [heroImageUrl, setHeroImageUrl] = useState(settings.heroImageUrl);
   const [captionDraft, setCaptionDraft] = useState(caption);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [uploaded, setUploaded] = useState(false);
 
   if (!canEdit || !editMode) return null;
 
-  async function uploadFile(file: File | null) {
-    if (!file) return;
-    setUploading(true);
-    setUploadError("");
-    setUploaded(false);
-    try {
-      const blob = await upload(`memorial/${crypto.randomUUID()}-${file.name}`, file, {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload-image",
-      });
-      setHeroImageUrl(blob.url);
-      setUploaded(true);
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function save() {
     setSaving(true);
-    await Promise.all([
-      fetch("/api/admin", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "field", field: "heroImageUrl", value: heroImageUrl }),
-      }),
-      fetch("/api/admin/content", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blockKey: "home.hero.caption", value: captionDraft }),
-      }),
-    ]);
+    await fetch("/api/admin/content", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ blockKey: "home.hero.caption", value: captionDraft }),
+    });
     setSaving(false);
     setActiveEditorId(null);
     router.refresh();
@@ -438,12 +402,10 @@ export function HeroVisualEditor({
       <button
         type="button"
         onClick={() => {
-          setHeroImageUrl(settings.heroImageUrl);
           setCaptionDraft(caption);
-          setUploaded(false);
           setActiveEditorId(editorId);
         }}
-        aria-label="Edit hero image and caption"
+        aria-label="Edit hero caption"
         className="absolute right-2 top-2 z-20 rounded-full bg-[#c48a3a] p-1.5 text-[#1f2d2b] shadow"
       >
         <PencilIcon />
@@ -451,32 +413,6 @@ export function HeroVisualEditor({
       {editing && (
         <div className="absolute right-0 top-12 z-40 w-72 max-w-[90vw] rounded border border-[#d8cec0] bg-[#fbf8f2] p-3 text-left font-sans text-base font-normal not-italic tracking-normal normal-case shadow-lg">
           <label className="block text-xs font-semibold text-[#1f2d2b]">
-            Hero image URL
-            <input
-              value={heroImageUrl}
-              onChange={(event) => setHeroImageUrl(event.target.value)}
-              placeholder="Optional public image URL"
-              className="mt-1 w-full border border-[#d8cec0] bg-white p-2 text-sm text-[#1f2d2b] outline-none"
-            />
-          </label>
-          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
-            {uploading ? "Uploading..." : "Or upload a photo"}
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(event) => uploadFile(event.target.files?.[0] || null)}
-            />
-          </label>
-          {uploadError && (
-            <p className="mt-1 text-xs text-[#b8786f]">{uploadError}</p>
-          )}
-          {uploaded && (
-            <p className="mt-1 text-xs text-[#536b60]">
-              Photo uploaded — click Save below to publish it.
-            </p>
-          )}
-          <label className="mt-3 block text-xs font-semibold text-[#1f2d2b]">
             Caption
             <textarea
               value={captionDraft}

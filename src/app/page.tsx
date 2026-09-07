@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getApprovedMemories, getMemorialSettings } from "@/lib/memorial";
+import { getApprovedMemories, getHeroImages, getMemorialSettings } from "@/lib/memorial";
 import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditableSetting, HeroVisualEditor } from "@/components/editable";
 import AdminNavLink from "@/components/admin-nav-link";
 import HomeMemoriesGrid from "@/components/home-memories-grid";
 import HomeTributesGrid from "@/components/home-tributes-grid";
+import HeroCarousel from "@/components/hero-carousel";
 
 const localImages = [
   "/images/WhatsApp Image 2026-09-02 at 19.09.54 (1).jpeg",
@@ -33,10 +34,11 @@ const DEFAULT_EVENTS = [
 ];
 
 export default async function Home() {
-  const [settings, memories, blocks] = await Promise.all([
+  const [settings, memories, blocks, heroImages] = await Promise.all([
     getMemorialSettings(),
     getApprovedMemories(),
     getContentBlocks(DEFAULT_TENANT_ID),
+    getHeroImages(),
   ]);
 
   const heroCaption = block(blocks, "home.hero.caption", "Forever held\nin our hearts");
@@ -163,20 +165,11 @@ export default async function Home() {
         </div>
         <div className="relative mx-auto w-full max-w-md lg:justify-self-end">
           <div
-            className={`${settings.heroImageUrl ? "relative overflow-hidden bg-[#536b60]" : "photo-placeholder"} aspect-[4/5] rounded-[48%_48%_4%_4%] shadow-[18px_20px_0_#d8cec0]`}
+            className={`${heroImages.length ? "relative overflow-hidden bg-[#536b60]" : "photo-placeholder"} aspect-[4/5] rounded-[48%_48%_4%_4%] shadow-[18px_20px_0_#d8cec0]`}
             aria-label={`Portrait of ${settings.displayName}`}
           >
-            {settings.heroImageUrl && (
-              <Image
-                src={settings.heroImageUrl}
-                alt={settings.displayName}
-                fill
-                sizes="(min-width: 1024px) 28rem, 90vw"
-                className="object-cover object-top"
-                // Admin-entered URL from any host; skip the remote optimizer
-                // rather than allow it to fetch arbitrary untrusted hosts.
-                unoptimized
-              />
+            {heroImages.length > 0 && (
+              <HeroCarousel images={heroImages} alt={settings.displayName} />
             )}
           </div>
           <div className="absolute -bottom-8 -left-5 max-w-[210px] border-l-2 border-[#c48a3a] bg-[#fbf8f2]/90 px-5 py-3 backdrop-blur-sm">
@@ -189,7 +182,7 @@ export default async function Home() {
               ))}
             </p>
           </div>
-          <HeroVisualEditor settings={settings} caption={heroCaption} />
+          <HeroVisualEditor caption={heroCaption} />
         </div>
       </section>
       <section className="border-y border-[#d8cec0] bg-[#536b60] text-[#fbf8f2]">
