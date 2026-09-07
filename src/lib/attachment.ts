@@ -4,14 +4,22 @@ export const TRIBUTE_ATTACHMENT_CONTENT_TYPES = [
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
+  "image/*",
 ];
 
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "heic", "heif"]);
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "heic",
+  "heif",
+  "bmp",
+  "tif",
+  "tiff",
+  "avif",
+]);
 const DOC_EXTENSIONS = new Set(["doc", "docx"]);
 
 export function getAttachmentKind(url: string): AttachmentKind {

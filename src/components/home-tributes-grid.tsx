@@ -69,7 +69,6 @@ export default function HomeTributesGrid({ tributes }: { tributes: Tribute[] }) 
                   fill
                   sizes="(min-width: 768px) 33vw, 100vw"
                   className="object-cover object-top"
-                  unoptimized
                 />
               ) : (
                 <div className="flex flex-col items-start gap-2 text-[#536b60]">
@@ -123,7 +122,6 @@ export default function HomeTributesGrid({ tributes }: { tributes: Tribute[] }) 
                   fill
                   sizes="90vw"
                   className="object-contain"
-                  unoptimized
                 />
               </div>
             ) : (
