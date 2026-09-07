@@ -6,6 +6,11 @@ import { upload } from "@vercel/blob/client";
 const ACCEPT =
   "application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*";
 
+function formatWait(seconds: number) {
+  const minutes = Math.max(1, Math.ceil(seconds / 60));
+  return minutes === 1 ? "a minute" : `${minutes} minutes`;
+}
+
 export default function TributeForm() {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -29,6 +34,22 @@ export default function TributeForm() {
 
     let attachmentUrl = "";
     if (attachmentFile) {
+      // @vercel/blob's upload() collapses any failure from the token
+      // endpoint below into one generic, unhelpful error, so the rate
+      // limit is checked here first, where we can show something useful.
+      const check = await fetch("/api/tributes/upload-check", { method: "POST" })
+        .then((res) => res.json())
+        .catch(() => ({ ok: true }));
+      if (!check.ok) {
+        setErrorMessage(
+          `You've tried uploading a few times recently. Please wait ${formatWait(
+            check.retryAfterSeconds ?? 900,
+          )} and try again.`,
+        );
+        setState("error");
+        return;
+      }
+
       try {
         // Uploaded directly to Blob (bypassing our own API route as a
         // request body) since Vercel serverless functions cap the body at
