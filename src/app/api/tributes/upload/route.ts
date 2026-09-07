@@ -1,6 +1,8 @@
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/lib/db";
-import { DEFAULT_TENANT_ID } from "@/lib/tenant";
+
+const MAX_BYTES = 20 * 1024 * 1024;
 
 function getClientKey(request: Request) {
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -8,7 +10,7 @@ function getClientKey(request: Request) {
     forwardedFor?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
     "unknown";
-  return `tribute:${clientIp}`;
+  return `tribute-pdf:${clientIp}`;
 }
 
 export async function POST(request: Request) {
@@ -32,30 +34,6 @@ export async function POST(request: Request) {
             "Retry-After": String(Math.ceil((lockedUntil - Date.now()) / 1000)),
           },
         },
-      );
-    }
-
-    const body = await request.json();
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    const pdfUrl = typeof body.pdfUrl === "string" ? body.pdfUrl.trim() : "";
-
-    if (!name || name.length > 80 || message.length > 2000) {
-      return NextResponse.json(
-        { error: "Please provide a name and message." },
-        { status: 400 },
-      );
-    }
-    if (!message && !pdfUrl) {
-      return NextResponse.json(
-        { error: "Please write a message or attach a letter." },
-        { status: 400 },
-      );
-    }
-    if (pdfUrl.length > 1000) {
-      return NextResponse.json(
-        { error: "That letter link is too long." },
-        { status: 400 },
       );
     }
 
@@ -97,33 +75,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
-    if (message) {
-      const [duplicate] = await sql`
-        select id from tributes
-        where tenant_id = ${DEFAULT_TENANT_ID}
-          and lower(regexp_replace(trim(name), '\s+', ' ', 'g')) = ${normalize(name)}
-          and lower(regexp_replace(trim(message), '\s+', ' ', 'g')) = ${normalize(message)}
-        limit 1
-      `;
-      if (duplicate) {
-        return NextResponse.json(
-          { error: "You've already submitted this tribute. Thank you!" },
-          { status: 409 },
-        );
-      }
-    }
-
-    await sql`
-      insert into tributes (tenant_id, name, message, pdf_url)
-      values (${DEFAULT_TENANT_ID}, ${name}, ${message}, ${pdfUrl || null})
-    `;
-    return NextResponse.json({ ok: true });
+    const body = (await request.json()) as HandleUploadBody;
+    const result = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ["application/pdf"],
+        maximumSizeInBytes: MAX_BYTES,
+        addRandomSuffix: true,
+      }),
+    });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Tribute submission failed", error);
+    console.error("Tribute PDF upload failed", error);
     return NextResponse.json(
-      { error: "Unable to submit tribute right now." },
-      { status: 500 },
+      { error: "Unable to upload that file right now." },
+      { status: 400 },
     );
   }
 }

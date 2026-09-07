@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
+import { getEmbed } from "@/lib/media-embed";
 
 const AUTOPLAY_MS = 3000;
 // Hidden for now — duplicates browsing every album individually. Flip back
@@ -24,38 +25,6 @@ type Album = {
   name: string;
   coverUrl: string | null;
 };
-
-type Embed =
-  | { kind: "youtube" | "vimeo"; src: string }
-  | { kind: "file"; src: string };
-
-function getEmbed(url: string): Embed {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.replace(/^www\.|^m\./, "");
-
-    if (host === "youtube.com") {
-      const id =
-        parsed.searchParams.get("v") ||
-        parsed.pathname.match(/\/(?:embed|shorts)\/([^/?]+)/)?.[1];
-      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host === "youtu.be") {
-      const id = parsed.pathname.slice(1);
-      if (id) return { kind: "youtube", src: `https://www.youtube.com/embed/${id}` };
-    }
-    if (host === "vimeo.com") {
-      const id = parsed.pathname.split("/").filter(Boolean)[0];
-      if (id) return { kind: "vimeo", src: `https://player.vimeo.com/video/${id}` };
-    }
-    if (host === "player.vimeo.com") {
-      return { kind: "vimeo", src: url };
-    }
-  } catch {
-    // Not a parseable URL — fall through and try it as a direct file.
-  }
-  return { kind: "file", src: url };
-}
 
 function CoverTile({
   label,

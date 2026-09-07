@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 import type { ApprovedTribute } from "@/lib/memorial";
 
@@ -9,6 +10,14 @@ function PencilIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
       <path d="M14.69 2.86a1.5 1.5 0 0 1 2.12 0l.33.33a1.5 1.5 0 0 1 0 2.12L6.5 15.85l-3.2.71.71-3.2Z" />
+    </svg>
+  );
+}
+
+function LetterIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M4 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4Zm.4 2h11.2L10 9.5 4.4 5ZM4 6.7l5.5 4.4a.8.8 0 0 0 1 0L16 6.7V15H4V6.7Z" />
     </svg>
   );
 }
@@ -28,7 +37,10 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   const [active, setActive] = useState<ApprovedTribute | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
+  const [draftPdfUrl, setDraftPdfUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfUploadError, setPdfUploadError] = useState("");
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -36,11 +48,30 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   function open(tribute: ApprovedTribute) {
     setDraftName(tribute.name);
     setDraftMessage(tribute.message);
+    setDraftPdfUrl(tribute.pdfUrl || "");
+    setPdfUploadError("");
     setActive(tribute);
   }
 
   function close() {
     setActive(null);
+  }
+
+  async function uploadPdf(file: File | null) {
+    if (!file) return;
+    setUploadingPdf(true);
+    setPdfUploadError("");
+    try {
+      const blob = await upload(`memorial/tributes/${crypto.randomUUID()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload-pdf",
+      });
+      setDraftPdfUrl(blob.url);
+    } catch (error) {
+      setPdfUploadError(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploadingPdf(false);
+    }
   }
 
   async function save() {
@@ -49,13 +80,20 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
     const response = await fetch("/api/admin/tribute", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: active.id, name: draftName, message: draftMessage }),
+      body: JSON.stringify({
+        id: active.id,
+        name: draftName,
+        message: draftMessage,
+        pdfUrl: draftPdfUrl,
+      }),
     });
     setSaving(false);
     if (!response.ok) return;
     setTributesState((current) =>
       current.map((tribute) =>
-        tribute.id === active.id ? { ...tribute, name: draftName, message: draftMessage } : tribute,
+        tribute.id === active.id
+          ? { ...tribute, name: draftName, message: draftMessage, pdfUrl: draftPdfUrl || null }
+          : tribute,
       ),
     );
     setActive(null);
@@ -162,9 +200,18 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                   <PencilIcon />
                 </span>
               )}
-              <p className="display-font line-clamp-6 text-2xl leading-tight">
-                “{tribute.message}”
-              </p>
+              {tribute.message ? (
+                <p className="display-font line-clamp-6 text-2xl leading-tight">
+                  “{tribute.message}”
+                </p>
+              ) : (
+                <div className="flex flex-col items-start gap-2 text-[#536b60]">
+                  <LetterIcon className="h-8 w-8" />
+                  <p className="display-font text-2xl leading-tight text-[#1f2d2b]">
+                    Read the letter
+                  </p>
+                </div>
+              )}
               <cite className="mt-4 block truncate text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
                 {tribute.name}
               </cite>
@@ -229,6 +276,45 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                     className="mt-2 w-full resize-none border-b border-[#b5a998] bg-transparent px-0 py-2 text-base font-normal normal-case tracking-normal text-[#1f2d2b] outline-none"
                   />
                 </label>
+                <div className="mt-6">
+                  <span className="block text-xs font-semibold uppercase tracking-[.2em] text-[#536b60]">
+                    Letter (PDF)
+                  </span>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    {draftPdfUrl && (
+                      <a
+                        href={draftPdfUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-[#536b60] underline underline-offset-2"
+                      >
+                        View current letter ↗
+                      </a>
+                    )}
+                    <label className="cursor-pointer rounded-full border border-[#b5a998] px-3 py-1.5 text-xs font-semibold text-[#1f2d2b]">
+                      {uploadingPdf ? "Uploading..." : draftPdfUrl ? "Replace" : "Attach a letter"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="sr-only"
+                        disabled={uploadingPdf}
+                        onChange={(event) => uploadPdf(event.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {draftPdfUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setDraftPdfUrl("")}
+                        className="text-xs font-semibold text-[#b8786f]"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {pdfUploadError && (
+                    <p className="mt-2 text-xs text-[#b8786f]">{pdfUploadError}</p>
+                  )}
+                </div>
                 <div className="mt-6 flex justify-end gap-2">
                   <button
                     type="button"
@@ -240,18 +326,35 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                   <button
                     type="button"
                     onClick={save}
-                    disabled={saving || !draftName.trim() || !draftMessage.trim()}
+                    disabled={saving || uploadingPdf || !draftName.trim() || (!draftMessage.trim() && !draftPdfUrl)}
                     className="rounded-full bg-[#1f2d2b] px-4 py-2 text-xs font-semibold text-[#fbf8f2] disabled:opacity-60"
                   >
                     {saving ? "Saving..." : "Save"}
                   </button>
                 </div>
               </>
-            ) : (
+            ) : active.message ? (
               <>
                 <p className="display-font text-3xl leading-tight">
                   “{active.message}”
                 </p>
+                <cite className="mt-8 block text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
+                  {active.name}
+                </cite>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col items-center gap-4 py-6 text-center">
+                  <LetterIcon className="h-12 w-12 text-[#536b60]" />
+                  <a
+                    href={active.pdfUrl ?? undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-[#1f2d2b] px-6 py-3 text-sm font-semibold text-[#fbf8f2]"
+                  >
+                    Read the full letter (PDF) ↗
+                  </a>
+                </div>
                 <cite className="mt-8 block text-xs not-italic uppercase tracking-[.2em] text-[#536b60]">
                   {active.name}
                 </cite>

@@ -30,6 +30,7 @@ export type ApprovedTribute = {
   id: string;
   name: string;
   message: string;
+  pdfUrl: string | null;
 };
 
 export type ApprovedMedia = {
@@ -95,13 +96,16 @@ export async function getApprovedTributesList(limit = 200) {
   try {
     const sql = getDatabase();
     const tributes = await sql`
-      select id, name, message
+      select id, name, message, pdf_url
       from tributes
       where tenant_id = ${DEFAULT_TENANT_ID} and status = 'approved'
       order by display_order asc, created_at desc
       limit ${limit}
     `;
-    return tributes as ApprovedTribute[];
+    return tributes.map(({ pdf_url, ...row }) => ({
+      ...row,
+      pdfUrl: pdf_url,
+    })) as ApprovedTribute[];
   } catch (error) {
     console.error("Approved tributes lookup failed", error);
     return [];

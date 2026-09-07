@@ -3,14 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getDatabase } from "@/lib/db";
 import { requireSession } from "@/lib/admin-auth";
-
-function isBlobUrl(url: string) {
-  try {
-    return new URL(url).hostname.endsWith(".public.blob.vercel-storage.com");
-  } catch {
-    return false;
-  }
-}
+import { isBlobUrl } from "@/lib/blob";
 
 export async function DELETE(request: Request) {
   try {
