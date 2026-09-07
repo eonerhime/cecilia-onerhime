@@ -251,6 +251,8 @@ alter table media_submissions add column if not exists thumbnail_url text;
 
 alter table tributes add column if not exists display_order integer not null default 999999;
 
+alter table tributes add column if not exists pdf_url text;
+
 update tributes t
 set display_order = ranked.rn
 from (

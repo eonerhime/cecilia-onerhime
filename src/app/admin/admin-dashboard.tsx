@@ -993,9 +993,21 @@ export default function AdminDashboard({
             onApprove={() => moderate("tribute", item.id, "approved")}
             onReject={() => moderate("tribute", item.id, "rejected")}
           >
-            <p className="display-font text-3xl leading-tight">
-              “{item.message}”
-            </p>
+            {item.message && (
+              <p className="display-font text-3xl leading-tight">
+                “{item.message}”
+              </p>
+            )}
+            {item.pdfUrl && (
+              <a
+                href={item.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-sm text-[#536b60] underline underline-offset-4"
+              >
+                Read the attached letter (PDF) ↗
+              </a>
+            )}
           </ReviewCard>
         ))}
       </ReviewSection>
