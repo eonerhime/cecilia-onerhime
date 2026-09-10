@@ -3,6 +3,7 @@ import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import { getMemorialSettings } from "@/lib/memorial";
 import { EditModeProvider } from "@/components/edit-mode";
 import SiteAudioPlayer from "@/components/site-audio-player";
+import ImageProtection from "@/components/image-protection";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,6 +51,7 @@ export default async function RootLayout({
         className="min-h-full flex flex-col"
       >
         <EditModeProvider>{children}</EditModeProvider>
+        <ImageProtection />
         <SiteAudioPlayer
           musicUrl={settings.musicUrl}
           musicAutoplay={settings.musicAutoplay}

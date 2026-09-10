@@ -27,6 +27,10 @@ body {
   background: var(--marigold);
   color: var(--paper);
 }
+img {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
 a,
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]) {
