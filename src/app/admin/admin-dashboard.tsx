@@ -342,9 +342,13 @@ export default function AdminDashboard({
       setError(result.error || "Bulk image upload failed.");
       return;
     }
-    setNotice(
-      `${result.data.imported} images added to the gallery.`,
-    );
+    const parts = [`${result.data.imported} images added to the gallery.`];
+    if (result.data.duplicates?.length) {
+      parts.push(
+        `Skipped ${result.data.duplicates.length} image(s) already in the gallery: ${result.data.duplicates.join(", ")}.`,
+      );
+    }
+    setNotice(parts.join(" "));
     router.refresh();
   }
 
