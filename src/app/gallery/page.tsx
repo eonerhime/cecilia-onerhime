@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getAlbums, getApprovedMediaList, getMemorialSettings } from "@/lib/memorial";
 import GalleryGrid from "@/components/gallery-grid";
 import ShareMediaForm from "./share-media-form";
@@ -30,12 +31,14 @@ export default async function Gallery() {
             </p>
           </Reveal>
           {media.length ? (
-            <GalleryGrid
-              media={media}
-              albums={albums}
-              displayName={settings.displayName}
-              shareSlot={<ShareMediaForm albums={albums} />}
-            />
+            <Suspense fallback={null}>
+              <GalleryGrid
+                media={media}
+                albums={albums}
+                displayName={settings.displayName}
+                shareSlot={<ShareMediaForm albums={albums} />}
+              />
+            </Suspense>
           ) : (
             <ShareMediaForm albums={albums} />
           )}
