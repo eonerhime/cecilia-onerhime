@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
@@ -93,6 +94,9 @@ export default function GalleryGrid({
   const { canEdit, editMode } = useEditMode();
   const reorderable = canEdit && editMode;
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [orderedMedia, setOrderedMedia] = useState(media);
   const [prevMedia, setPrevMedia] = useState(media);
   if (media !== prevMedia) {
@@ -110,8 +114,20 @@ export default function GalleryGrid({
   const hasVideos = orderedMedia.some((item) => item.mediaType === "video");
   const [mediaTab, setMediaTab] = useState<"photos" | "videos">("photos");
 
-  const [view, setView] = useState<"covers" | "all" | string>(
-    albumList.length > 0 ? "covers" : "all",
+  const albumParam = searchParams.get("album");
+  const [view, setView] = useState<"covers" | "all" | string>(() => {
+    if (albumParam === "all") return "all";
+    if (albumParam && albumList.some((album) => album.id === albumParam)) return albumParam;
+    return albumList.length > 0 ? "covers" : "all";
+  });
+
+  const goToView = useCallback(
+    (next: "covers" | "all" | string) => {
+      setView(next);
+      const query = next === "covers" ? "" : `?album=${next}`;
+      router.replace(`/gallery${query}`, { scroll: false });
+    },
+    [router],
   );
 
   const photoMedia = orderedMedia.filter((item) => item.mediaType === "image");
@@ -501,7 +517,7 @@ export default function GalleryGrid({
                 label="All photos"
                 coverUrl={null}
                 fallback={photoMedia[0]}
-                onClick={() => setView("all")}
+                onClick={() => goToView("all")}
               />
             )}
             {albumList.map((album) => (
@@ -510,7 +526,7 @@ export default function GalleryGrid({
                 label={album.name}
                 coverUrl={album.coverUrl}
                 fallback={photoMedia.find((item) => item.albumId === album.id)}
-                onClick={() => setView(album.id)}
+                onClick={() => goToView(album.id)}
                 draggable={reorderable}
                 onDragStart={() => setDragAlbumId(album.id)}
                 onDragOver={(event) => {
@@ -535,7 +551,7 @@ export default function GalleryGrid({
               {albumList.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setView("covers")}
+                  onClick={() => goToView("covers")}
                   className="text-sm text-[#536b60] hover:text-[#c48a3a]"
                 >
                   ← All albums
