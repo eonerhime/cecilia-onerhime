@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import AdminNavLink from "@/components/admin-nav-link";
+import MobileNavMenu from "@/components/mobile-nav-menu";
 
 type PageKey = "profile" | "gallery" | "tributes" | "programme";
 
@@ -24,7 +25,7 @@ export default function SiteNav({
   const links = ALL_LINKS.filter((link) => link.key !== current);
 
   return (
-    <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
+    <nav className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
       <Link href="/" aria-label={displayName}>
         {heroImageUrl ? (
           <span className="relative block h-11 w-11 overflow-hidden rounded-full">
@@ -43,9 +44,18 @@ export default function SiteNav({
           </span>
         )}
       </Link>
-      <Link href="/" className="link-underline text-sm text-[#536b60] hover:text-[#c48a3a] md:hidden">
-        ← Home
-      </Link>
+      <div className="flex items-center gap-4 md:hidden">
+        <Link href="/" className="link-underline text-sm text-[#536b60] hover:text-[#c48a3a]">
+          ← Home
+        </Link>
+        <MobileNavMenu
+          links={links.map((link) => ({
+            href: link.href,
+            label: link.label,
+            emphasize: link.key === "programme",
+          }))}
+        />
+      </div>
       <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
         {links.map((link) =>
           link.key === "programme" ? (
