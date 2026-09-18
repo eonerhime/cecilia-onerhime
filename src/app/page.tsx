@@ -10,6 +10,7 @@ import { getContentBlocks, block } from "@/lib/content";
 import { DEFAULT_TENANT_ID } from "@/lib/tenant";
 import { Editable, EditableSetting, HeroVisualEditor } from "@/components/editable";
 import AdminNavLink from "@/components/admin-nav-link";
+import MobileNavMenu from "@/components/mobile-nav-menu";
 import HomeMemoriesGrid from "@/components/home-memories-grid";
 import HomeTributesGrid from "@/components/home-tributes-grid";
 import HeroCarousel from "@/components/hero-carousel";
@@ -64,7 +65,7 @@ export default async function Home() {
 
   return (
     <main className="paper-grain min-h-screen">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
+      <nav className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-7 lg:px-10">
         <EditableSetting instanceId="nav" field="displayName" settings={settings}>
           <Link href="/" aria-label={settings.displayName}>
             {settings.heroImageUrl ? (
@@ -85,6 +86,14 @@ export default async function Home() {
             )}
           </Link>
         </EditableSetting>
+        <MobileNavMenu
+          links={[
+            { href: "/profile", label: "Her story" },
+            { href: "/gallery", label: "Gallery" },
+            { href: "/tributes", label: "Tributes" },
+            { href: "/programme", label: "Programme", emphasize: true },
+          ]}
+        />
         <div className="hidden items-center gap-8 text-xs font-medium uppercase tracking-[.18em] text-[#536b60] md:flex">
           <a href="/profile" className="link-underline hover:text-[#c48a3a]">
             Her story
@@ -416,7 +425,7 @@ export default async function Home() {
           />
         </div>
       </section>
-      <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[#d8cec0] px-6 py-8 text-xs text-[#536b60] sm:flex-row sm:items-center sm:justify-between lg:px-10">
+      <footer className="mx-auto flex max-w-7xl flex-col items-center gap-3 border-t border-[#d8cec0] px-6 py-8 text-center text-xs text-[#536b60] sm:flex-row sm:items-center sm:justify-between sm:text-left lg:px-10">
         <Editable
           blockKey="footer.prefix"
           value={block(blocks, "footer.prefix", "In memory of")}
@@ -425,7 +434,7 @@ export default async function Home() {
             {block(blocks, "footer.prefix", "In memory of")} {settings.displayName}
           </p>
         </Editable>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-start">
           <Link href="/privacy" className="link-underline hover:text-[#c48a3a]">
             Privacy
           </Link>
