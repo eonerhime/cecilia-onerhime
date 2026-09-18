@@ -990,8 +990,8 @@ export default function AdminDashboard({
           )}
         </div>
 
-        <div className="mt-6 grid gap-5 md:grid-cols-3">
-          <div className="border-t-2 border-[#c48a3a] pt-4">
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <div className="flex flex-col border-t-2 border-[#c48a3a] pt-4">
             <h3 className="display-font text-3xl">Tributes CSV</h3>
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
               UTF-8 CSV, up to 100 rows. Quoted commas and line breaks are
@@ -1006,7 +1006,7 @@ export default function AdminDashboard({
             >
               Download template
             </a>
-            <label className="mt-5 flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
+            <label className="mt-auto flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
               {importing === "tributes" ? "Importing..." : "Choose CSV"}
               <input
                 type="file"
@@ -1018,13 +1018,13 @@ export default function AdminDashboard({
               />
             </label>
           </div>
-          <div className="border-t-2 border-[#c48a3a] pt-4">
+          <div className="flex flex-col border-t-2 border-[#c48a3a] pt-4">
             <h3 className="display-font text-3xl">Gallery images</h3>
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
               Select up to 30 images, 10 MB each. They&apos;re stored in
               Vercel Blob and published to the gallery immediately.
             </p>
-            <label className="mt-5 flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
+            <label className="mt-auto flex cursor-pointer items-center justify-center rounded-full bg-[#1f2d2b] px-5 py-3 text-center text-sm font-semibold text-[#fbf8f2]">
               {importing === "images" ? "Uploading..." : "Choose images"}
               <input
                 type="file"
@@ -1035,7 +1035,7 @@ export default function AdminDashboard({
               />
             </label>
           </div>
-          <div className="border-t-2 border-[#c48a3a] pt-4">
+          <div className="flex flex-col border-t-2 border-[#c48a3a] pt-4 md:col-start-2">
             <h3 className="display-font text-3xl">Video link</h3>
             <p className="mt-2 text-sm leading-6 text-[#536b60]">
               A YouTube, Vimeo, or direct video file link — it&apos;ll play
