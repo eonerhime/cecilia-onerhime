@@ -6,6 +6,7 @@ import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import type { Role, Session } from "@/lib/session";
 import { ROLE_DESCRIPTIONS, hasRole } from "@/lib/roles";
+import ConfirmDialog from "@/components/confirm-dialog";
 import type { Album, HeroImage, MusicAutoplay } from "@/lib/memorial";
 import type {
   ContactInquiry,
@@ -112,6 +113,7 @@ export default function AdminDashboard({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [deleteHeroImageId, setDeleteHeroImageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hasRole(session.role, "moderator")) return;
@@ -197,7 +199,6 @@ export default function AdminDashboard({
   }
 
   async function deleteHeroImage(id: string) {
-    if (!window.confirm("Remove this photo from the hero carousel?")) return;
     setHeroImages((current) => current.filter((image) => image.id !== id));
     await fetch("/api/admin/hero-images", {
       method: "DELETE",
@@ -721,7 +722,7 @@ export default function AdminDashboard({
           images={heroImages}
           uploading={uploadingHeroCarousel}
           onUpload={addHeroImage}
-          onDelete={deleteHeroImage}
+          onDelete={setDeleteHeroImageId}
         />
         <div className="mt-6 border-t border-[#d8cec0] pt-6">
           <p className="text-sm font-semibold text-[#1f2d2b]">
@@ -850,7 +851,7 @@ export default function AdminDashboard({
             images={heroImages}
             uploading={uploadingHeroCarousel}
             onUpload={addHeroImage}
-            onDelete={deleteHeroImage}
+            onDelete={setDeleteHeroImageId}
           />
           <div className="mt-4">
             <label className="flex cursor-pointer items-center justify-center rounded-full border border-[#b5a998] px-3 py-2 text-center text-xs font-semibold text-[#1f2d2b]">
@@ -1345,6 +1346,16 @@ export default function AdminDashboard({
           </button>
         )}
       </div>
+      <ConfirmDialog
+        open={deleteHeroImageId !== null}
+        message="Remove this photo from the hero carousel?"
+        confirmLabel="Remove"
+        onCancel={() => setDeleteHeroImageId(null)}
+        onConfirm={() => {
+          if (deleteHeroImageId) deleteHeroImage(deleteHeroImageId);
+          setDeleteHeroImageId(null);
+        }}
+      />
     </div>
   );
 }

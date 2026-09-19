@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
+import ConfirmDialog from "@/components/confirm-dialog";
 import type { ApprovedTribute } from "@/lib/memorial";
 import { getAttachmentKind, getOfficeEmbedUrl } from "@/lib/attachment";
 
@@ -56,6 +57,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   function open(tribute: ApprovedTribute) {
     setDraftName(tribute.name);
@@ -113,7 +115,6 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
   }
 
   async function deleteTribute(id: string) {
-    if (!window.confirm("Delete this tribute? This can't be undone.")) return;
     setTributesState((current) => current.filter((tribute) => tribute.id !== id));
     setActive((current) => (current?.id === id ? null : current));
     await fetch("/api/admin/tribute", {
@@ -249,7 +250,7 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  deleteTribute(tribute.id);
+                  setDeleteTargetId(tribute.id);
                 }}
                 aria-label="Delete tribute"
                 className="absolute bottom-3 right-3 z-10 rounded-full bg-[#fbf8f2] p-1.5 text-[#b8786f] shadow hover:bg-[#b8786f] hover:text-[#fbf8f2]"
@@ -440,6 +441,15 @@ export default function TributesGrid({ tributes }: { tributes: ApprovedTribute[]
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        message="Delete this tribute? This can't be undone."
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId) deleteTribute(deleteTargetId);
+          setDeleteTargetId(null);
+        }}
+      />
     </>
   );
 }
