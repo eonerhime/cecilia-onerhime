@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
 import { getEmbed } from "@/lib/media-embed";
+import ConfirmDialog from "@/components/confirm-dialog";
 
 const AUTOPLAY_MS = 3000;
 // Hidden for now — duplicates browsing every album individually. Flip back
@@ -144,6 +145,7 @@ export default function GalleryGrid({
   const [savingOrder, setSavingOrder] = useState(false);
   const [dragAlbumId, setDragAlbumId] = useState<string | null>(null);
   const [savingAlbumOrder, setSavingAlbumOrder] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const images = visiblePhotos;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -279,7 +281,6 @@ export default function GalleryGrid({
   }
 
   async function deleteMedia(mediaId: string) {
-    if (!window.confirm("Delete this item? This can't be undone.")) return;
     setOrderedMedia((current) => current.filter((item) => item.id !== mediaId));
     if (activeIndex !== null) close();
     setActiveVideo((current) => (current?.id === mediaId ? null : current));
@@ -460,7 +461,7 @@ export default function GalleryGrid({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              deleteMedia(item.id);
+              setDeleteTargetId(item.id);
             }}
             aria-label="Delete"
             className="absolute bottom-2 right-2 z-10 rounded-full bg-[#fbf8f2] p-1.5 text-[#b8786f] shadow hover:bg-[#b8786f] hover:text-[#fbf8f2]"
@@ -719,6 +720,15 @@ export default function GalleryGrid({
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        message="Delete this item? This can't be undone."
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId) deleteMedia(deleteTargetId);
+          setDeleteTargetId(null);
+        }}
+      />
     </>
   );
 }

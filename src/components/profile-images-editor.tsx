@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useEditMode } from "@/components/edit-mode";
+import ConfirmDialog from "@/components/confirm-dialog";
 import { MAX_SUPPORTING_IMAGES, type ProfileImage } from "@/lib/memorial";
 
 function PencilIcon() {
@@ -49,6 +50,7 @@ export function ProfileBannerEditor({ image }: { image: ProfileImage | null }) {
   const { canEdit, editMode } = useEditMode();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const editing = canEdit && editMode;
 
   if (!image && !editing) return null;
@@ -69,7 +71,7 @@ export function ProfileBannerEditor({ image }: { image: ProfileImage | null }) {
 
   async function handleRemove() {
     if (!image) return;
-    if (!window.confirm("Remove this cover photo?")) return;
+    setConfirmingRemove(false);
     setBusy(true);
     await removeProfileImage(image.id);
     setBusy(false);
@@ -125,7 +127,7 @@ export function ProfileBannerEditor({ image }: { image: ProfileImage | null }) {
           </label>
           <button
             type="button"
-            onClick={handleRemove}
+            onClick={() => setConfirmingRemove(true)}
             disabled={busy}
             aria-label="Remove cover photo"
             title="Remove cover photo"
@@ -142,6 +144,13 @@ export function ProfileBannerEditor({ image }: { image: ProfileImage | null }) {
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmingRemove}
+        message="Remove this cover photo?"
+        confirmLabel="Remove"
+        onCancel={() => setConfirmingRemove(false)}
+        onConfirm={handleRemove}
+      />
     </div>
   );
 }
@@ -160,6 +169,7 @@ export function ProfileSupportingImagesEditor({
   const { canEdit, editMode } = useEditMode();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null);
 
   async function handleAdd(file: File | null) {
     if (!file) return;
@@ -176,7 +186,7 @@ export function ProfileSupportingImagesEditor({
   }
 
   async function handleRemove(id: string) {
-    if (!window.confirm("Remove this photo?")) return;
+    setConfirmTargetId(null);
     setBusy(true);
     await removeProfileImage(id);
     setBusy(false);
@@ -204,7 +214,7 @@ export function ProfileSupportingImagesEditor({
           {editing && (
             <button
               type="button"
-              onClick={() => handleRemove(image.id)}
+              onClick={() => setConfirmTargetId(image.id)}
               disabled={busy}
               aria-label="Remove photo"
               title="Remove photo"
@@ -232,6 +242,15 @@ export function ProfileSupportingImagesEditor({
         </label>
       )}
       {error && <p className="text-xs text-[#b8786f]">{error}</p>}
+      <ConfirmDialog
+        open={confirmTargetId !== null}
+        message="Remove this photo?"
+        confirmLabel="Remove"
+        onCancel={() => setConfirmTargetId(null)}
+        onConfirm={() => {
+          if (confirmTargetId) handleRemove(confirmTargetId);
+        }}
+      />
     </div>
   );
 }
